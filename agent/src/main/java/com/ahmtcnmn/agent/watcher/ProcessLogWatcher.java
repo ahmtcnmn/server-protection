@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.List;
 
+import com.ahmtcnmn.agent.Libs.ColorLogger;
 import com.ahmtcnmn.agent.client.HeartbeatTask;
 import com.ahmtcnmn.agent.detector.Interface.Detector;
 
@@ -38,7 +39,7 @@ public class ProcessLogWatcher {
             builder.redirectErrorStream(true); 
             
             process = builder.start();
-            System.out.println("[SİSTEM] Harici süreç başlatıldı.");
+            ColorLogger.info("İZLEME", "'" + String.join(" ", command) + "' çıktısı izleniyor → " + detector.eventType());
 
             // 2. Okuma işlemini ayrı bir Thread'e devrediyoruz
             readerThread = new Thread(() -> {
@@ -49,32 +50,34 @@ public class ProcessLogWatcher {
                     // readLine() metodu yeni satır gelene kadar bekler.
                     // Eğer Thread'e interrupt sinyali gelirse döngüyü kırıp çıkıyoruz!
                     while (!Thread.currentThread().isInterrupted() && (satir = reader.readLine()) != null) {
-                        System.out.println("[HARİCİ PROGRAM]: " + satir);
+                        ColorLogger.debug("LOG", command.get(0) + ": " + ColorLogger.cut(satir, 120));
 
                         if (detector.isSuspicious(satir)) {
+                            ColorLogger.warn("TESPİT", detector.eventType() + " | " + ColorLogger.cut(satir, 100));
                             heartbeatTask.sendDetectedEvent(satir, detector.eventType());
                         }
                     }
                     
                 } catch (Exception e) {
-                    System.out.println("[SİSTEM] Okuma sırasında bir kesinti oldu veya süreç kapandı.");
+                    ColorLogger.debug("İZLEME", "Süreç okuması kesildi: " + e.getMessage());
                 }
                 
-                System.out.println("[SİSTEM] Okuyucu Thread görevini tamamladı ve sessizce kapanıyor.");
+                if (!Thread.currentThread().isInterrupted()) {
+                    ColorLogger.warn("İZLEME", "Süreç sonlandı, izleme durdu: '" + String.join(" ", command) + "'");
+                }
             });
             readerThread.setDaemon(true);
             // Thread'i başlat
             readerThread.start();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            ColorLogger.error("İZLEME", "Süreç başlatılamadı '" + String.join(" ", command) + "': " + e.getMessage());
         }
     }
 
     @PreDestroy
     public void stop() {
         // process.destroy(), thread'i durdur
-        System.out.println("[SİSTEM] Kapanış sinyali alındı. Temizlik yapılıyor...");
 
         // Önce okuyucu Thread'e "Lütfen işini bırak ve kapan" sinyali gönderiyoruz
         if (readerThread != null && readerThread.isAlive()) {
@@ -89,7 +92,7 @@ public class ProcessLogWatcher {
             // process.destroyForcibly(); 
         }
         
-        System.out.println("[SİSTEM] Tüm harici süreçler ve threadler güvenle kapatıldı.");
+        ColorLogger.info("KAPAT", "İzleme durduruldu: '" + String.join(" ", command) + "'");
     }
 }
     

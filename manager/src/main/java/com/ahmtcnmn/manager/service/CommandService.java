@@ -40,6 +40,11 @@ public class CommandService {
         return DtoCommandResponse.fromEntity(command);
     }
 
+    public boolean hasPendingCommand(Long agentId, String commandType, String payload) {
+        return commandRepository.existsByAgentIdAndCommandTypeAndPayloadAndStatus(
+                agentId, commandType, payload, CommandStatus.PENDING);
+    }
+
     public List<Command> getPendingCommands(Long AgentId){
         return commandRepository.findByAgentIdAndStatus(AgentId, CommandStatus.PENDING);
     }

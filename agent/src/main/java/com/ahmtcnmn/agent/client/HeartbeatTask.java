@@ -13,10 +13,8 @@ import com.ahmtcnmn.agent.service.MyRestClient;
 import com.ahmtcnmn.agent.service.QueueService;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Component
-@Slf4j
 @RequiredArgsConstructor
 public class HeartbeatTask {
 
@@ -24,6 +22,7 @@ public class HeartbeatTask {
     private final RestClient restClient;
     private final QueueService queueService;
     private final ExtractSourceIp extractSourceIp;
+    private final ManagerConnection managerConnection;
 
     @Value("${manager.api-key}")
     private String apiKey;
@@ -43,32 +42,35 @@ public class HeartbeatTask {
                 .header("X-API-KEY", apiKey)
                 .retrieve()
                 .toBodilessEntity();
-            queueService.processPendingEvents();   
-            ColorLogger.success("Heartbeat gönderildi.");
+            managerConnection.up();
+            ColorLogger.info("HEARTBEAT", "Gönderildi (her 30 sn)");
+            queueService.processPendingEvents();
         } catch (Exception e) {
             // Manager erişilemez — logla, çökme (Faz 9'da offline kuyruk)
-            log.warn("Heartbeat gönderilemedi: {}", e.getMessage());
+            if (managerConnection.isDown()) {
+                ColorLogger.warn("HEARTBEAT", "Gönderilemedi, 30 sn sonra tekrar denenecek");
+            }
+            managerConnection.down(e);
         }
     }
 
     public boolean sendDetectedEvent(String rawData, String eventType) {
+        String sourceIp = extractSourceIp.extractIp(rawData);
+        DtoEventRequest event = DtoEventRequest.builder()
+            .eventType(eventType)
+            .severity(5)
+            .rawData(rawData)
+            .sourceIp(sourceIp)
+            .build();
         try {
-            myRestClient.postRestClient(managerEventSqlUrl, DtoEventRequest.builder()
-                .eventType(eventType)
-                .severity(5)
-                .rawData(rawData)
-                .sourceIp(extractSourceIp.extractIp(rawData))
-                .build());
-            ColorLogger.success("HeartbeatTask: " + eventType + " event gönderildi.");
+            myRestClient.postRestClient(managerEventSqlUrl, event);
+            managerConnection.up();
+            ColorLogger.success("MANAGER", "Event iletildi: " + eventType + " (ip " + sourceIp + ")");
             return true;
         } catch (Exception e) {
-            queueService.savePendingRequest(managerEventSqlUrl,
-                DtoEventRequest.builder().eventType(eventType).severity(5).rawData(rawData).build());
-                return false;
+            managerConnection.down(e);
+            queueService.savePendingRequest(managerEventSqlUrl, event);
+            return false;
         }
     }
-
-    
-
-    
 }

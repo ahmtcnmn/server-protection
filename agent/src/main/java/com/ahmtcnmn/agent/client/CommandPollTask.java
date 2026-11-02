@@ -16,56 +16,62 @@ import com.ahmtcnmn.agent.service.MyRestClient;
 import com.ahmtcnmn.agent.service.QueueService;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class CommandPollTask {
     
     private final RestClient restClient;
     private final MyRestClient myRestClient;
     private final QueueService queueService;
     private final List<CommandExecutor> commandExecutors;
+    private final ManagerConnection managerConnection;
 
     @Value("${manager.api-key}")
     private String apiKey;
 
     @Scheduled(fixedRate=10000)
     public void pollAndExecuteCommands(){
+        DtoCommand[] pendingCommands;
         try{
-            DtoCommand[] pendingCommands= restClient.get()
+            pendingCommands= restClient.get()
                 .uri("/api/commands/pending")
                 .header("X-API-KEY",apiKey)
                 .retrieve()
                 .body(DtoCommand[].class);
-
-            for(DtoCommand command: pendingCommands){
-                handleCommand(command);
-            }
+            managerConnection.up();
         }
         catch(Exception e){
-            log.warn("Komut sorgulama başarısız: {}", e.getMessage());
+            // Manager kapalıysa bunu ManagerConnection bir kez yazar; her 10 sn tekrar basmıyoruz
+            managerConnection.down(e);
+            return;
+        }
+
+        if (pendingCommands == null) return;
+        for(DtoCommand command: pendingCommands){
+            handleCommand(command);
         }
     }
 
     private void handleCommand(DtoCommand command) {
-            log.info(">>> Gelen komut tipi: [" + command.commandType() + "]");
+        String name = "#" + command.id() + " " + command.commandType();
+        ColorLogger.info("KOMUT", name + " alındı (" + ColorLogger.cut(command.payload(), 40) + ")");
 
         Optional<CommandExecutor> executorOpt = commandExecutors.stream()
             .filter(executor -> executor.supports(command.commandType()))
             .findFirst();
         if(executorOpt.isEmpty()){
+            ColorLogger.warn("KOMUT", name + " bilinmeyen komut, FAILED olarak bildiriliyor");
             sendResult(command.id(), "FAILED", "Bilinmeyen komut: " + command.commandType());
             return;
         }
         try{
             String result = executorOpt.get().execute(command.payload());
-            ColorLogger.info("[SİSTEM] Komut çalıştırıldı: " + command.commandType() + " | Sonuç: " + result);
+            ColorLogger.success("KOMUT", name + " tamamlandı → " + ColorLogger.cut(result, 60));
             sendResult(command.id(), "COMPLETED", result);
         }
         catch(Exception e){
-            log.warn("Komut çalıştırma başarısız: {}", e.getMessage());
+            ColorLogger.error("KOMUT", name + " başarısız: " + ColorLogger.cut(e.getMessage(), 80));
             sendResult(command.id(), "FAILED", "Komut çalıştırma başarısız: " + e.getMessage());
         }
     }
@@ -74,8 +80,9 @@ public class CommandPollTask {
         String uri = "/api/commands/" + commandId + "/result";
         try {
             myRestClient.postRestClient(uri, new DtoCommandResultRequest(status, result));
+            ColorLogger.debug("KOMUT", "#" + commandId + " sonucu Manager'a iletildi (" + status + ")");
         } catch (Exception e) {
-            log.warn("Komut sonucu gönderilemedi: {}", e.getMessage());
+            managerConnection.down(e);
             queueService.savePendingRequest(uri, new DtoCommandResultRequest(status, result));
         }
     }

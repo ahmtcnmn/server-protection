@@ -1,6 +1,9 @@
 package com.ahmtcnmn.agent.detector;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
@@ -20,9 +23,27 @@ public class SqliDetector implements Detector  {
         Pattern.compile("\\b(drop\\s+table|xp_cmdshell|sleep\\s*\\()", Pattern.CASE_INSENSITIVE)
     );
 
+    
+    private static final Pattern REQUEST_LINE = Pattern.compile("\"[A-Z]+ (\\S+) HTTP/[\\d.]+\"");
+
     @Override
     public boolean isSuspicious(String logLine) {
-        return PATTERNS.stream().anyMatch(p -> p.matcher(logLine).find());
+        String target = requestTarget(logLine);
+        return PATTERNS.stream().anyMatch(p -> p.matcher(target).find());
+    }
+
+    
+    private String requestTarget(String logLine) {
+        Matcher m = REQUEST_LINE.matcher(logLine);
+        if (!m.find()) {
+            return logLine;
+        }
+        String target = m.group(1);
+        try {
+            return URLDecoder.decode(target, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return target;
+        }
     }
 
     @Override
@@ -30,5 +51,5 @@ public class SqliDetector implements Detector  {
         return "SQL_INJECTION";
     }
 
-    
+
 }

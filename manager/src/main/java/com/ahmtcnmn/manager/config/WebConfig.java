@@ -18,16 +18,22 @@ public class WebConfig implements WebMvcConfigurer {
     private final LoginRateLimitInterceptor loginRateLimitInterceptor;
     private final ApiKeyInterceptor apiKeyInterceptor;
 
+    // Yalnız Agent'ın çağırdığı endpoint'ler (X-API-KEY). Panel endpoint'leri JWT ile korunur;
+    // "/api/events/**" yazılınca panelin GET /api/events isteği de API key istiyordu (401).
+    private static final String[] AGENT_PATHS = {
+        "/api/agents/heartbeat", "/api/events/create", "/api/commands/**"
+    };
+
     
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/api/agents/heartbeat", "/api/events/**", "/api/commands/**")
+                .addPathPatterns(AGENT_PATHS)
                 .order(1);   // ApiKeyInterceptor'dan ÖNCE çalışsın (daha ucuz bir kontrol, gereksiz DB sorgusunu önler)
 
         registry.addInterceptor(apiKeyInterceptor)
-                .addPathPatterns("/api/agents/heartbeat", "/api/events/**", "/api/commands/**")
+                .addPathPatterns(AGENT_PATHS)
                 .order(2);
 
         registry.addInterceptor(loginRateLimitInterceptor)

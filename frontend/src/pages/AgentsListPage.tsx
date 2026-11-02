@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listAgents } from '../api/agents';
+import { usePolling } from '../hooks/usePolling';
 import { StatusDot } from '../components/StatusDot';
 import { isOnlineToStatus } from '../lib/mappers';
-import type { AgentResponse, Page } from '../types';
 
 type StatusFilter = 'all' | 'true' | 'false';
 
@@ -12,38 +12,21 @@ export function AgentsListPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
-  const [pageData, setPageData] = useState<Page<AgentResponse> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setPage(0);
   }, [statusFilter, query]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    listAgents({
-      search: query || undefined,
-      status: statusFilter === 'all' ? undefined : statusFilter,
-      page,
-      size: 10,
-    })
-      .then((data) => {
-        if (cancelled) return;
-        setPageData(data);
-        setError(null);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Failed to load agents');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [statusFilter, query, page]);
+  const { data: pageData, loading, error } = usePolling(
+    () =>
+      listAgents({
+        search: query || undefined,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        page,
+        size: 10,
+      }),
+    [statusFilter, query, page],
+  );
 
   const agents = pageData?.content ?? [];
 
@@ -81,16 +64,13 @@ export function AgentsListPage() {
               type="text"
             />
           </div>
-          <button className="bg-primary-container text-on-primary-container font-body-sm font-semibold px-4 py-1.5 rounded hover:bg-primary transition-colors shadow-sm">
-            Deploy Agent
-          </button>
         </div>
       </div>
 
       <div className="bg-surface border border-border rounded-lg flex-1 flex flex-col overflow-hidden">
-        {loading && <div className="p-6 text-on-surface-variant font-body-sm text-body-sm">Loading...</div>}
-        {!loading && error && <div className="p-6 text-error font-body-sm text-body-sm">Failed to load data.</div>}
-        {!loading && !error && (
+        {loading && !pageData && <div className="p-6 text-on-surface-variant font-body-sm text-body-sm">Loading...</div>}
+        {!loading && error && !pageData && <div className="p-6 text-error font-body-sm text-body-sm">Failed to load data.</div>}
+        {pageData && (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -102,6 +82,13 @@ export function AgentsListPage() {
                 </tr>
               </thead>
               <tbody className="font-data-mono text-data-mono text-text-primary divide-y divide-border">
+                {agents.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-6 px-4 text-center text-on-surface-variant font-body-sm text-body-sm">
+                      No agents found.
+                    </td>
+                  </tr>
+                )}
                 {agents.map((agent) => {
                   const status = isOnlineToStatus(agent.isOnline);
                   return (

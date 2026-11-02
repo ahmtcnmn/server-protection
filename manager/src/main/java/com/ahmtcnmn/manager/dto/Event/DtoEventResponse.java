@@ -11,7 +11,8 @@ public record DtoEventResponse(
     String eventType,
     Instant timestamp,
     Integer severity,
-    String rawData
+    String rawData,
+    String sourceIp
 ) {
     public static DtoEventResponse from(Events event) {
         return new DtoEventResponse(
@@ -21,7 +22,8 @@ public record DtoEventResponse(
             event.getEventType(),
             event.getTimestamp(),
             event.getSeverity(),
-            event.getRawData()
+            event.getRawData(),
+            event.getSourceIp()
         );
     }
 }

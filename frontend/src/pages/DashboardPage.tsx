@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { usePolling } from '../hooks/usePolling';
 import { Link } from 'react-router-dom';
 import { getDashboardSummary, getEventsTimeline } from '../api/dashboard';
 import { listAgents } from '../api/agents';
 import { listEvents } from '../api/events';
 import { StatusDot } from '../components/StatusDot';
 import { isOnlineToStatus, severityToLevel } from '../lib/mappers';
-import type { AgentResponse, DashboardSummary, EventResponse, EventSeverityLevel, TimelinePoint } from '../types';
+import type { AgentResponse, EventResponse, EventSeverityLevel } from '../types';
 
 const typeBadgeClasses: Record<EventSeverityLevel, string> = {
   info: 'bg-primary/15 text-primary border-primary/30',
@@ -32,47 +33,27 @@ function formatHour(hour: string) {
 
 export function DashboardPage() {
   const clock = useIsoClock();
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
-  const [agents, setAgents] = useState<AgentResponse[]>([]);
-  const [recentEvents, setRecentEvents] = useState<EventResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      getDashboardSummary(),
-      getEventsTimeline(24),
-      listAgents({ page: 0, size: 10, sort: 'lastSeen,desc' }),
-      listEvents({ page: 0, size: 5, sort: 'timestamp,desc' }),
-    ])
-      .then(([s, t, a, e]) => {
-        if (cancelled) return;
-        setSummary(s);
-        setTimeline(t);
-        setAgents(a.content);
-        setRecentEvents(e.content);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Failed to load dashboard data');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data, loading, error } = usePolling(
+    () =>
+      Promise.all([
+        getDashboardSummary(),
+        getEventsTimeline(24),
+        listAgents({ page: 0, size: 10, sort: 'lastSeen,desc' }),
+        listEvents({ page: 0, size: 8, sort: 'timestamp,desc' }),
+      ]),
+    [],
+  );
 
   if (loading) {
     return <div className="p-container-padding text-on-surface-variant font-body-sm text-body-sm">Loading...</div>;
   }
-  if (error || !summary) {
-    return <div className="p-container-padding text-error font-body-sm text-body-sm">Failed to load data.</div>;
+  if (!data) {
+    return <div className="p-container-padding text-error font-body-sm text-body-sm">{error ?? 'Failed to load data.'}</div>;
   }
+
+  const [summary, timeline, agentsPage, eventsPage] = data;
+  const agents: AgentResponse[] = agentsPage.content;
+  const recentEvents: EventResponse[] = eventsPage.content;
 
   const totals = timeline.map((b) => b.low + b.medium + b.high + b.critical);
   const maxTotal = Math.max(1, ...totals);
@@ -86,10 +67,6 @@ export function DashboardPage() {
             LAST_UPDATE: <span className="text-primary">{clock}</span>
           </p>
         </div>
-        <button className="bg-primary-container text-on-primary-container px-4 py-2 rounded font-headline-sm text-headline-sm font-semibold hover:bg-primary transition-colors flex items-center gap-2">
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>Deploy Agent</span>
-        </button>
       </div>
 
       {/* KPI Row */}
@@ -177,14 +154,18 @@ export function DashboardPage() {
             <h3 className="font-headline-sm text-headline-sm font-semibold text-text-primary">Agent Status</h3>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
+            {agents.length === 0 && (
+              <p className="p-2 font-body-sm text-body-sm text-on-surface-variant">No agents registered yet.</p>
+            )}
             <ul className="space-y-1">
               {agents.map((agent) => {
                 const status = isOnlineToStatus(agent.isOnline);
                 return (
-                  <li
-                    key={agent.id}
-                    className="flex items-center justify-between p-2 hover:bg-hover rounded transition-colors group"
-                  >
+                  <li key={agent.id}>
+                    <Link
+                      to={`/agents/${agent.id}`}
+                      className="flex items-center justify-between p-2 hover:bg-hover rounded transition-colors group"
+                    >
                     <div className="flex items-center gap-3">
                       <StatusDot status={status} />
                       <div>
@@ -200,6 +181,7 @@ export function DashboardPage() {
                         </div>
                       </div>
                     </div>
+                    </Link>
                   </li>
                 );
               })}
@@ -228,6 +210,11 @@ export function DashboardPage() {
               </tr>
             </thead>
             <tbody className="font-body-sm text-body-sm text-on-surface">
+              {recentEvents.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-6 px-4 text-center text-on-surface-variant">No events yet.</td>
+                </tr>
+              )}
               {recentEvents.map((event) => {
                 const level = severityToLevel(event.severity);
                 return (
@@ -259,7 +246,9 @@ export function DashboardPage() {
                         status={level === 'critical' ? 'unresponsive' : level === 'medium' ? 'high-load' : 'online'}
                       />
                     </td>
-                    <td className="py-2 px-4 text-on-surface-variant">{event.rawData}</td>
+                    <td className="py-2 px-4 text-on-surface-variant font-data-mono text-data-mono">
+                      <div className="truncate max-w-[480px]" title={event.rawData}>{event.rawData}</div>
+                    </td>
                   </tr>
                 );
               })}

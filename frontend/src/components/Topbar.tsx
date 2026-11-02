@@ -1,39 +1,53 @@
+import { NavLink, useNavigate } from 'react-router-dom';
+import { clearToken, getUsername } from '../lib/auth';
+import { navItems } from '../lib/nav';
+
 export function Topbar() {
+  const navigate = useNavigate();
+  const username = getUsername();
+
+  const logout = () => {
+    clearToken();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <header className="fixed top-0 right-0 w-full md:w-[calc(100%-240px)] h-topbar-height bg-background border-b border-border flex items-center justify-between px-container-padding z-30">
-      <div className="flex items-center gap-4 w-1/3">
-        <button className="md:hidden text-text-primary hover:text-primary transition-opacity">
-          <span className="material-symbols-outlined">menu</span>
-        </button>
-        <div className="relative w-full max-w-md hidden md:block">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
-            search
-          </span>
-          <input
-            className="w-full bg-background border border-border rounded pl-9 pr-3 py-1.5 font-body-sm text-body-sm text-text-primary focus:outline-none focus:border-primary-container transition-colors placeholder:text-on-surface-variant"
-            placeholder="Global search..."
-            type="text"
-          />
-        </div>
+      {/* Mobilde sidebar gizli: sayfa geçişleri buradan */}
+      <nav className="flex items-center gap-1 md:hidden">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            title={item.label}
+            className={({ isActive }) =>
+              `p-2 rounded ${isActive ? 'text-primary bg-hover' : 'text-on-surface-variant hover:text-primary'}`
+            }
+          >
+            <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+          </NavLink>
+        ))}
+      </nav>
+      <div className="hidden md:flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant">
+        <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+        Live · refreshes every 10s
       </div>
-      <div className="flex items-center gap-2">
+
+      <div className="flex items-center gap-3">
+        {username && (
+          <span className="hidden sm:flex items-center gap-1 font-body-sm text-body-sm text-on-surface-variant">
+            <span className="material-symbols-outlined text-[18px]">account_circle</span>
+            {username}
+          </span>
+        )}
         <button
-          className="p-2 text-on-surface-variant hover:text-primary transition-opacity cursor-pointer active:opacity-80 rounded-full hover:bg-hover"
-          title="notifications"
+          onClick={logout}
+          title="Log out"
+          className="flex items-center gap-1 px-2 py-1.5 rounded text-on-surface-variant hover:text-primary hover:bg-hover transition-colors font-body-sm text-body-sm"
         >
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
-        <button
-          className="p-2 text-on-surface-variant hover:text-primary transition-opacity cursor-pointer active:opacity-80 rounded-full hover:bg-hover"
-          title="apps"
-        >
-          <span className="material-symbols-outlined">apps</span>
-        </button>
-        <button
-          className="p-2 text-on-surface-variant hover:text-primary transition-opacity cursor-pointer active:opacity-80 rounded-full hover:bg-hover"
-          title="account_circle"
-        >
-          <span className="material-symbols-outlined">account_circle</span>
+          <span className="material-symbols-outlined text-[18px]">logout</span>
+          <span className="hidden sm:inline">Log out</span>
         </button>
       </div>
     </header>

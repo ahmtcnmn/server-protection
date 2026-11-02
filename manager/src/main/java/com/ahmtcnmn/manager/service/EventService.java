@@ -36,6 +36,10 @@ public class EventService {
     @Value("${security.whitelisted-ips}")
     private List<String> whitelistedIps;
 
+    // Aynı IP'den 60 sn içinde bu kadar SQL_INJECTION gelirse BLOCK_IP üretilir
+    @Value("${security.sqli-threshold:3}")
+    private int sqliThreshold;
+
     public List<DtoEventTypeCount> getEventTypeBreakdown(Long agentId) {
         List<EventTypeCount> rawCounts = eventsRepository.countByEventType(agentId);
 
@@ -101,16 +105,21 @@ public class EventService {
                 .and(EventSearch.timestampBetween(since, Instant.now()))
         );
 
-        if (recentCount >= 1) {
+        if (recentCount >= sqliThreshold) {
             // 📝 10.4'teki whitelist kontrolüne geçin
             if (whitelistedIps.contains(savedEvent.getSourceIp())) {
-            ColorLogger.warn("IP {} whitelist'te, engellenmiyor" + savedEvent.getSourceIp());
+            ColorLogger.warn("IP " + savedEvent.getSourceIp() + " whitelist'te, engellenmiyor");
             return;
         }
-        // whitelist kontrolünden sonra:
+        // Agent henüz almadığı bir BLOCK_IP varsa yenisini üretme (eşik aşıldıktan sonra gelen
+        // her event ayrı komut oluşturuyordu)
+        Long agentId = savedEvent.getAgent().getId();
+        if (commandService.hasPendingCommand(agentId, "BLOCK_IP", savedEvent.getSourceIp())) {
+            return;
+        }
         DtoCommandRequest blockCommand = new DtoCommandRequest("BLOCK_IP", savedEvent.getSourceIp());
-        commandService.createCommand(savedEvent.getAgent().getId(), blockCommand);
-        ColorLogger.warn("IP {} için otomatik engelleme komutu oluşturuldu" + savedEvent.getSourceIp());
+        commandService.createCommand(agentId, blockCommand);
+        ColorLogger.warn("IP " + savedEvent.getSourceIp() + " için otomatik engelleme komutu oluşturuldu");
         }
     }
 }

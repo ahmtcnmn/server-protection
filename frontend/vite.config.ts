@@ -7,9 +7,11 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
+      // Manager HTTPS 8443'te, sertifikası self-signed → secure: false
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'https://localhost:8443',
         changeOrigin: true,
+        secure: false,
       },
     },
   },

@@ -33,7 +33,9 @@ public class SecurityConfig {
             .exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint))   // ← yeni satır
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login","/api/health").permitAll()
-                .requestMatchers("/api/agents/heartbeat", "/api/events/**", "/api/commands/**", "/api/agents/register").permitAll()
+                // Agent endpoint'leri: JWT yerine ApiKeyInterceptor korur (WebConfig). Panelin okuduğu
+                // GET /api/events, /api/events/{id}/... JWT ister; bu yüzden yalnız /create açık.
+                .requestMatchers("/api/agents/heartbeat", "/api/events/create", "/api/commands/**", "/api/agents/register").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

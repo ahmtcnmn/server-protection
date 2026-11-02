@@ -16,7 +16,7 @@ import jakarta.annotation.PreDestroy;
 public class FileLogWatcher extends TailerListenerAdapter {
     
     private final Detector detector;
-    private final HeartbeatTask heartbeatTask;   // event göndermek için gerçek sahibi bu
+    private final HeartbeatTask heartbeatTask;   
     private final String filePath;
 
     private Tailer tailer;
@@ -27,9 +27,10 @@ public class FileLogWatcher extends TailerListenerAdapter {
         this.heartbeatTask = heartbeatTask;
     }
 
+    private boolean fileMissingLogged = false;
+
     @PostConstruct
     public void start() {
-        // Tailer'ı burada başlat (yukarıdaki gibi)
         File file = new File(filePath);
         this.tailer = Tailer.builder()
                 .setFile(file)
@@ -37,29 +38,43 @@ public class FileLogWatcher extends TailerListenerAdapter {
                 .setDelayDuration(Duration.ofMillis(1000))
                 .setTailFromEnd(true)
                 .get();
-        ColorLogger.info("Log izleme başlatıldı: " + filePath);
+        ColorLogger.info("İZLEME", filePath + " izleniyor → " + detector.eventType());
     }
     
     @Override
     public void handle(String line) {
-        ColorLogger.info("[CANLI LOG] " + line);
+        fileMissingLogged = false;
+        ColorLogger.debug("LOG", filePath + ": " + ColorLogger.cut(line, 120));
         if (detector.isSuspicious(line)) {
-            ColorLogger.error("[SUSPİÇİOUS] Potansiyel " + detector.eventType() + " attempt detected: " + line);
-            boolean isEventSent = heartbeatTask.sendDetectedEvent(line, detector.eventType());
-            if(isEventSent) {
-                ColorLogger.warn("[SİSTEM] LogTailer: " + detector.eventType() + " event manager'a gönderildi.");
-            } else {
-                
-                ColorLogger.error("[SİSTEM] LogTailer: " + detector.eventType() + " event manager'a gönderilemedi.");
-            }
+            ColorLogger.warn("TESPİT", detector.eventType() + " | " + ColorLogger.cut(line, 100));
+            heartbeatTask.sendDetectedEvent(line, detector.eventType());
         }
     } 
+
+    @Override
+    public void fileNotFound() {
+        
+        if (!fileMissingLogged) {
+            ColorLogger.warn("İZLEME", "Dosya bulunamadı, oluşması bekleniyor: " + filePath);
+            fileMissingLogged = true;
+        }
+    }
+
+    @Override
+    public void fileRotated() {
+        ColorLogger.info("İZLEME", "Dosya döndürüldü (rotate), baştan okunuyor: " + filePath);
+    }
+
+    @Override
+    public void handle(Exception ex) {
+        ColorLogger.error("İZLEME", filePath + " okunamadı: " + ColorLogger.cut(ex.getMessage(), 80));
+    }
 
     @PreDestroy
     private void stopLogWatcher() {
         if (tailer != null) {
             tailer.close();            // ← uygulama/restart kapanırken temizle
-            ColorLogger.info("Log izleme durduruldu.");
+            ColorLogger.info("KAPAT", "İzleme durduruldu: " + filePath);
         }
     }
     

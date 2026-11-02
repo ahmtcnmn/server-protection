@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { listAgents } from '../api/agents';
 import { listEvents } from '../api/events';
 import { SeverityBadge } from '../components/SeverityBadge';
+import { usePolling } from '../hooks/usePolling';
 import { severityToLevel } from '../lib/mappers';
-import type { EventResponse, Page } from '../types';
+import { EVENT_TYPES, type EventResponse } from '../types';
 
 function formatRawData(rawData: string) {
   try {
@@ -13,34 +15,80 @@ function formatRawData(rawData: string) {
   }
 }
 
+// <input type="datetime-local"> yerel saat verir; API ISO-8601 (UTC) bekler
+function toIso(local: string) {
+  return local ? new Date(local).toISOString() : undefined;
+}
+
+const severityOptions = [
+  { label: 'All', value: undefined },
+  { label: 'Med+', value: 3 },
+  { label: 'High+', value: 4 },
+  { label: 'Crit', value: 5 },
+] as const;
+
+const inputClass =
+  'bg-background border border-border text-on-surface font-body-sm text-body-sm rounded px-2 py-1.5 focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container h-8';
+
 export function EventsListPage() {
+  // ?agentId=1 ile gelinirse (ör. agent detayından) filtre hazır gelsin
+  const [params] = useSearchParams();
+  const [agentId, setAgentId] = useState<string>(params.get('agentId') ?? '');
+  const [type, setType] = useState('');
+  const [search, setSearch] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [severityMin, setSeverityMin] = useState<number | undefined>(undefined);
+  const [live, setLive] = useState(true);
   const [page, setPage] = useState(0);
-  const [pageData, setPageData] = useState<Page<EventResponse> | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    listEvents({ page, size: 20, sort: 'timestamp,desc' })
-      .then((data) => {
-        if (cancelled) return;
-        setPageData(data);
-        setError(null);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Failed to load events');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [page]);
+    setPage(0);
+  }, [agentId, type, search, from, to, severityMin]);
+
+  const { data: agentsPage } = usePolling(() => listAgents({ page: 0, size: 100, sort: 'hostname,asc' }), [], 0);
+
+  const { data: pageData, loading, error } = usePolling(
+    () =>
+      listEvents({
+        agentId: agentId ? Number(agentId) : undefined,
+        type: type || undefined,
+        severityMin,
+        from: toIso(from),
+        to: toIso(to),
+        search: search || undefined,
+        page,
+        size: 20,
+        sort: 'timestamp,desc',
+      }),
+    [agentId, type, search, from, to, severityMin, page],
+    live ? 10000 : 0,
+  );
 
   const events = pageData?.content ?? [];
+  const hasFilter = agentId || type || search || from || to || severityMin !== undefined;
+
+  const clearFilters = () => {
+    setAgentId('');
+    setType('');
+    setSearch('');
+    setFrom('');
+    setTo('');
+    setSeverityMin(undefined);
+  };
+
+  const copyRaw = () => {
+    if (!selectedEvent) return;
+    navigator.clipboard
+      ?.writeText(selectedEvent.rawData)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => {});
+  };
 
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden">
@@ -50,17 +98,29 @@ export function EventsListPage() {
           <div>
             <h2 className="font-headline-lg text-headline-lg font-bold text-text-primary tracking-tight">Events</h2>
             <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
-              Real-time system telemetry and security alerts.
+              Security events reported by agents.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-2 px-3 py-1.5 border border-border text-text-primary font-body-sm text-body-sm rounded hover:bg-hover transition-colors">
-              <span className="material-symbols-outlined text-[16px]">download</span>
-              Export
-            </button>
-            <button className="flex items-center gap-2 px-3 py-1.5 bg-primary-container text-on-primary-container font-body-sm text-body-sm rounded hover:opacity-90 transition-opacity font-semibold">
-              <span className="material-symbols-outlined text-[16px]">pause</span>
-              Pause Stream
+            {hasFilter && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-2 px-3 py-1.5 border border-border text-text-primary font-body-sm text-body-sm rounded hover:bg-hover transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
+                Clear filters
+              </button>
+            )}
+            <button
+              onClick={() => setLive((v) => !v)}
+              className={`flex items-center gap-2 px-3 py-1.5 font-body-sm text-body-sm rounded font-semibold transition-opacity ${
+                live
+                  ? 'bg-primary-container text-on-primary-container hover:opacity-90'
+                  : 'border border-border text-text-primary hover:bg-hover'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">{live ? 'pause' : 'play_arrow'}</span>
+              {live ? 'Pause live' : 'Resume live'}
             </button>
           </div>
         </div>
@@ -68,53 +128,69 @@ export function EventsListPage() {
         <div className="flex flex-wrap gap-element-gap mb-4">
           <div className="flex flex-col gap-1 min-w-[150px]">
             <label className="font-label-caps text-label-caps text-on-surface-variant">Agent</label>
-            <select className="bg-background border border-border text-on-surface font-body-sm text-body-sm rounded px-3 py-1.5 focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container h-8">
-              <option>All Agents</option>
+            <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className={inputClass}>
+              <option value="">All Agents</option>
+              {agentsPage?.content.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.hostname}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex flex-col gap-1 min-w-[200px]">
             <label className="font-label-caps text-label-caps text-on-surface-variant">Event Type</label>
-            <button className="w-full bg-background border border-border text-on-surface font-body-sm text-body-sm rounded px-3 py-1.5 flex justify-between items-center focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container h-8 text-left">
-              <span className="truncate">All Types</span>
-              <span className="material-symbols-outlined text-[16px] text-on-surface-variant">arrow_drop_down</span>
-            </button>
+            <select value={type} onChange={(e) => setType(e.target.value)} className={inputClass}>
+              <option value="">All Types</option>
+              {EVENT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="font-label-caps text-label-caps text-on-surface-variant">Timeframe</label>
             <div className="flex items-center gap-2">
-              <input
-                className="bg-background border border-border text-on-surface font-body-sm text-body-sm rounded px-2 py-1.5 focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container h-8 w-[170px]"
-                type="datetime-local"
-              />
+              <input value={from} onChange={(e) => setFrom(e.target.value)} className={`${inputClass} w-[190px]`} type="datetime-local" />
               <span className="text-on-surface-variant">-</span>
-              <input
-                className="bg-background border border-border text-on-surface font-body-sm text-body-sm rounded px-2 py-1.5 focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container h-8 w-[170px]"
-                type="datetime-local"
-              />
+              <input value={to} onChange={(e) => setTo(e.target.value)} className={`${inputClass} w-[190px]`} type="datetime-local" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className="font-label-caps text-label-caps text-on-surface-variant">Min Severity</label>
             <div className="flex bg-background border border-border rounded overflow-hidden h-8">
-              <button className="px-3 text-body-sm font-body-sm text-on-surface-variant hover:bg-hover border-r border-border">
-                Info
-              </button>
-              <button className="px-3 text-body-sm font-body-sm text-on-surface-variant hover:bg-hover border-r border-border">
-                Warn
-              </button>
-              <button className="px-3 text-body-sm font-body-sm text-on-surface-variant hover:bg-hover">Crit</button>
+              {severityOptions.map((opt, i) => (
+                <button
+                  key={opt.label}
+                  onClick={() => setSeverityMin(opt.value)}
+                  className={`px-3 text-body-sm font-body-sm ${i < severityOptions.length - 1 ? 'border-r border-border' : ''} ${
+                    severityMin === opt.value ? 'bg-primary/15 text-primary' : 'text-on-surface-variant hover:bg-hover'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
+          </div>
+          <div className="flex flex-col gap-1 min-w-[200px] flex-1">
+            <label className="font-label-caps text-label-caps text-on-surface-variant">Search raw data</label>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="e.g. 1.2.3.4 or /login"
+              className={inputClass}
+            />
           </div>
         </div>
       </div>
 
       {/* Data Table */}
       <div className="flex-1 overflow-auto bg-background p-container-padding">
-        {loading && <div className="text-on-surface-variant font-body-sm text-body-sm">Loading...</div>}
-        {!loading && error && <div className="text-error font-body-sm text-body-sm">Failed to load data.</div>}
-        {!loading && !error && (
+        {loading && !pageData && <div className="text-on-surface-variant font-body-sm text-body-sm">Loading...</div>}
+        {error && !pageData && <div className="text-error font-body-sm text-body-sm">Failed to load data.</div>}
+        {pageData && (
           <>
-            <div className="w-full border border-border rounded bg-surface">
+            <div className="w-full border border-border rounded bg-surface overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-surface z-10 shadow-[0_1px_0_0_#2A333D]">
                   <tr>
@@ -122,14 +198,22 @@ export function EventsListPage() {
                     <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant w-[140px]">Severity</th>
                     <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant w-[150px]">Agent</th>
                     <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant w-[120px]">Type</th>
+                    <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant w-[140px]">Source IP</th>
                     <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant">Raw Data (Truncated)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border font-body-sm text-body-sm">
+                  {events.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-6 px-4 text-center text-on-surface-variant">
+                        No events match the filters.
+                      </td>
+                    </tr>
+                  )}
                   {events.map((event) => (
                     <tr
                       key={event.id}
-                      className="hover:bg-hover transition-colors cursor-pointer"
+                      className={`hover:bg-hover transition-colors cursor-pointer ${selectedEvent?.id === event.id ? 'bg-hover' : ''}`}
                       onClick={() => setSelectedEvent(event)}
                     >
                       <td className="py-2 px-4 text-on-surface-variant whitespace-nowrap">
@@ -148,9 +232,12 @@ export function EventsListPage() {
                         </Link>
                       </td>
                       <td className="py-2 px-4">
-                        <span className="border border-border text-on-surface-variant px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">
+                        <span className="border border-border text-on-surface-variant px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider whitespace-nowrap">
                           {event.eventType}
                         </span>
+                      </td>
+                      <td className="py-2 px-4 font-data-mono text-data-mono text-on-surface whitespace-nowrap">
+                        {event.sourceIp ?? '—'}
                       </td>
                       <td className="py-2 px-4">
                         <div className="font-data-mono text-data-mono text-on-surface-variant truncate max-w-[400px]">
@@ -165,19 +252,19 @@ export function EventsListPage() {
 
             <div className="mt-4 flex justify-between items-center text-on-surface-variant font-body-sm text-body-sm">
               <span>
-                {pageData ? `Showing ${pageData.numberOfElements} of ${pageData.totalElements} events` : ''}
+                {`Showing ${pageData.numberOfElements} of ${pageData.totalElements} events · page ${pageData.number + 1}/${Math.max(1, pageData.totalPages)}`}
               </span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={!pageData || pageData.first}
+                  disabled={pageData.first}
                   className="px-2 py-1 border border-border rounded hover:bg-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Prev
                 </button>
                 <button
                   onClick={() => setPage((p) => p + 1)}
-                  disabled={!pageData || pageData.last}
+                  disabled={pageData.last}
                   className="px-2 py-1 border border-border rounded hover:bg-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
@@ -199,7 +286,7 @@ export function EventsListPage() {
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <SeverityBadge severity={severityToLevel(selectedEvent.severity)} />
-                <h3 className="font-headline-sm text-headline-sm font-bold text-text-primary">Event Details</h3>
+                <h3 className="font-headline-sm text-headline-sm font-bold text-text-primary">Event #{selectedEvent.id}</h3>
               </div>
               <button
                 className="text-on-surface-variant hover:text-text-primary transition-colors"
@@ -226,13 +313,22 @@ export function EventsListPage() {
                   <p className="font-label-caps text-label-caps text-on-surface-variant mb-1">Event Type</p>
                   <p className="font-body-sm text-body-sm text-on-surface">{selectedEvent.eventType}</p>
                 </div>
+                <div>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant mb-1">Severity</p>
+                  <p className="font-data-mono text-data-mono text-on-surface">{selectedEvent.severity} / 5</p>
+                </div>
+                <div>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant mb-1">Source IP</p>
+                  <p className="font-data-mono text-data-mono text-on-surface">{selectedEvent.sourceIp ?? '—'}</p>
+                </div>
               </div>
 
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-end">
                   <p className="font-label-caps text-label-caps text-on-surface-variant">Raw Payload</p>
-                  <button className="text-primary font-body-sm text-[11px] hover:underline flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">content_copy</span> Copy
+                  <button onClick={copyRaw} className="text-primary font-body-sm text-[11px] hover:underline flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">{copied ? 'check' : 'content_copy'}</span>
+                    {copied ? 'Copied' : 'Copy'}
                   </button>
                 </div>
                 <div className="bg-background border border-border rounded p-4 overflow-x-auto">
@@ -240,15 +336,6 @@ export function EventsListPage() {
                     {formatRawData(selectedEvent.rawData)}
                   </pre>
                 </div>
-              </div>
-
-              <div className="mt-auto pt-4 border-t border-border flex gap-3">
-                <button className="flex-1 bg-primary-container text-on-primary-container font-body-sm text-body-sm py-2 rounded font-semibold hover:opacity-90 transition-opacity">
-                  Acknowledge Alert
-                </button>
-                <button className="flex-1 border border-border text-text-primary font-body-sm text-body-sm py-2 rounded hover:bg-hover transition-colors">
-                  Create Ticket
-                </button>
               </div>
             </div>
           </>

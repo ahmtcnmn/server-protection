@@ -19,7 +19,7 @@ export function listEvents(params: ListEventsParams) {
 }
 
 export function listEventsByAgent(agentId: number, page = 0, size = 20) {
-  return apiClient.get<Page<EventResponse>>(`/events/${agentId}/events`, { params: { page, size } }).then((r) => r.data);
+  return apiClient.get<Page<EventResponse>>(`/events/${agentId}/events`, { params: { page, size, sort: 'timestamp,desc' } }).then((r) => r.data);
 }
 
 export function getEventTypeBreakdown(agentId: number) {

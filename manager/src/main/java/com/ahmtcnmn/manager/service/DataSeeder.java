@@ -25,10 +25,11 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.findByUsername("admin").isEmpty()) {
+        if (userRepository.findByUsername(adminUsername).isEmpty()) {
+            // id elle verilmez: @GeneratedValue(IDENTITY) üretir. setId(1L) boş DB'de
+            // Hibernate'in kaydı "var olan" sanıp merge etmesine ve çökmesine yol açıyordu.
             User admin = new User();
-            admin.setId(1L);
-            admin.setUsername("admin");
+            admin.setUsername(adminUsername);
             admin.setPasswordHash(passwordEncoder.encode(adminPassword));
             admin.setRole("ADMIN");
             userRepository.save(admin);

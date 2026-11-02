@@ -5,7 +5,6 @@ import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
-import com.ahmtcnmn.agent.Libs.ColorLogger;
 import com.ahmtcnmn.agent.detector.Interface.Detector;
 
 @Component
@@ -20,9 +19,7 @@ public class DbAuthFailureDetector implements Detector {
 
     @Override
     public boolean isSuspicious(String line) {
-        boolean result = PATTERNS.stream().anyMatch(p -> p.matcher(line).find());
-        ColorLogger.info("DbAuthFailureDetector kontrol: " + line + " → " + result);
-        return result;
+        return PATTERNS.stream().anyMatch(p -> p.matcher(line).find());
 
     }
 

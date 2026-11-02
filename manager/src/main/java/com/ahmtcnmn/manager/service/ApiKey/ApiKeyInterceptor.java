@@ -23,17 +23,17 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String rawKey = request.getHeader("X-API-KEY");
-        String hashedKey = HashApiKey.hashApiKey(rawKey);
-        if (hashedKey == null || !agentModelRepository.findByApiKeyHash(hashedKey).isPresent()) {
+        // Header yoksa hash'leme (null → NullPointerException → 500 dönüyordu)
+        if (rawKey == null || rawKey.isBlank()) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
         }
-        Optional<Agent> agentOptional = agentModelRepository.findByApiKeyHash(hashedKey);
-        if (agentOptional.isEmpty()){
+        Optional<Agent> agentOptional = agentModelRepository.findByApiKeyHash(HashApiKey.hashApiKey(rawKey));
+        if (agentOptional.isEmpty()) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return false;  
+            return false;
         }
-        
+
         request.setAttribute("authenticatedAgent", agentOptional.get());
         return true;
     }

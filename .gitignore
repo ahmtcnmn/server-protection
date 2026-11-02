@@ -1,0 +1,16 @@
+# Claude dosyaları ve notlar (README hariç tüm md'ler)
+claude/
+*.md
+!README.md
+
+# macOS / editör
+.DS_Store
+.vscode/
+
+# Build çıktıları
+target/
+node_modules/
+dist/
+
+# Agent'ın yerel kuyruk veritabanı
+agent/data/

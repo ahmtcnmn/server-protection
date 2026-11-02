@@ -18,6 +18,7 @@ export interface EventResponse {
   timestamp: string;
   severity: number;
   rawData: string;
+  sourceIp: string | null;
 }
 
 export interface DashboardSummary {
@@ -52,3 +53,21 @@ export interface Page<T> {
   numberOfElements: number;
   empty: boolean;
 }
+
+export type CommandStatus = 'PENDING' | 'DELIVERED' | 'COMPLETED' | 'FAILED';
+
+export interface CommandResponse {
+  id: number;
+  commandType: string;
+  payload: string | null;
+  status: CommandStatus;
+  result: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+// Agent'taki detector'ların ve executor'ların ürettiği event tipleri
+export const EVENT_TYPES = ['SQL_INJECTION', 'DB_AUTH_FAILURE', 'SUSPICIOUS_SYSTEM_ACTIVITY', 'IP_BLOCKED'] as const;
+
+// Agent'ın desteklediği komutlar (CommandExecutor implementasyonları)
+export const COMMAND_TYPES = ['PING', 'BLOCK_IP'] as const;

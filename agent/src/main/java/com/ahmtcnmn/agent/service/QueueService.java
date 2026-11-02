@@ -5,7 +5,9 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.ahmtcnmn.agent.Dto.responder.DtoEventRequest;
 import com.ahmtcnmn.agent.Libs.ColorLogger;
+import com.ahmtcnmn.agent.client.ManagerConnection;
 import com.ahmtcnmn.agent.model.PendingEvent;
 import com.ahmtcnmn.agent.repository.PendingEventRepository;
 
@@ -28,9 +30,10 @@ public class QueueService {
             pendingEvent.setPayloadJson(objectMapper.writeValueAsString(payload));  // nesneyi JSON metnine çevir
             pendingEvent.setCreatedAt(Instant.now());
             pendingEventRepository.save(pendingEvent);
-            ColorLogger.info("Pending request saved: " + uri);
+            ColorLogger.warn("KUYRUK", describe(uri, payload) + " kuyruğa alındı (bekleyen: "
+                    + pendingEventRepository.count() + ")");
         } catch (Exception e) {
-            ColorLogger.warn("Kuyruğa kaydedilemedi: {}"+ e.getMessage());
+            ColorLogger.error("KUYRUK", "Kuyruğa kaydedilemedi, veri kayboldu: " + ColorLogger.cut(e.getMessage(), 80));
         }
     }
 
@@ -39,16 +42,36 @@ public class QueueService {
         List<PendingEvent> pendingEvents = pendingEventRepository.findAll();
         if (pendingEvents.isEmpty()) return;
 
-        ColorLogger.info("Processing " + pendingEvents.size() + " pending events...");
+        ColorLogger.info("KUYRUK", pendingEvents.size() + " bekleyen kayıt Manager'a gönderiliyor...");
 
+        int sent = 0;
+        String lastError = null;
         for (PendingEvent pendingEvent : pendingEvents) {
             try {
                 myRestClient.postRawJson(pendingEvent.getUri(), pendingEvent.getPayloadJson());
                 pendingEventRepository.delete(pendingEvent);
-                ColorLogger.success("Kuyruktan gönderildi: " + pendingEvent.getUri());
+                sent++;
             } catch (Exception e) {
-                ColorLogger.warn("Kuyruktaki event hâlâ gönderilemiyor: " + e.getMessage());
+                lastError = ManagerConnection.describe(e);
             }
         }
+
+        if (lastError == null) {
+            ColorLogger.success("KUYRUK", sent + "/" + pendingEvents.size() + " gönderildi, kuyruk boş");
+        } else {
+            ColorLogger.warn("KUYRUK", sent + "/" + pendingEvents.size() + " gönderildi, "
+                    + (pendingEvents.size() - sent) + " bekliyor (" + lastError + ")");
+        }
+    }
+
+    
+    private String describe(String uri, Object payload) {
+        if (payload instanceof DtoEventRequest event) {
+            return event.eventType() + " event'i (ip " + event.sourceIp() + ")";
+        }
+        if (uri.startsWith("/api/commands/")) {
+            return "Komut #" + uri.replaceAll("\\D+", "") + " sonucu";
+        }
+        return uri;
     }
 }

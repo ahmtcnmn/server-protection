@@ -1,11 +1,6 @@
 import { NavLink } from 'react-router-dom';
+import { navItems } from '../lib/nav';
 
-const navItems = [
-  { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
-  { to: '/agents', label: 'Agents', icon: 'security' },
-  { to: '/events', label: 'Events', icon: 'notifications' },
-  { to: '/settings', label: 'Settings', icon: 'settings' },
-];
 
 export function Sidebar() {
   return (
@@ -40,15 +35,6 @@ export function Sidebar() {
         ))}
       </div>
 
-      <div className="px-inner-padding mt-auto">
-        <a
-          className="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-hover hover:text-primary transition-colors active:scale-95 duration-150"
-          href="#"
-        >
-          <span className="material-symbols-outlined text-[20px]">account_circle</span>
-          <span className="font-body-md text-body-md">User Profile</span>
-        </a>
-      </div>
     </nav>
   );
 }

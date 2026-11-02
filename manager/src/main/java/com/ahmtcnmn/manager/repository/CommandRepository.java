@@ -13,4 +13,5 @@ import com.ahmtcnmn.manager.model.CommandStatus;
 public interface CommandRepository extends JpaRepository<Command, Long> {
     List<Command> findByAgentIdAndStatus(Long agentId, CommandStatus status);
     Page<Command> findByAgentId(Long agentId, Pageable pageable);
+    boolean existsByAgentIdAndCommandTypeAndPayloadAndStatus(Long agentId, String commandType, String payload, CommandStatus status);
 }

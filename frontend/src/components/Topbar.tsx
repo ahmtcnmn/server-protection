@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
+import { logout as logoutApi } from '../api/auth';
 import { clearToken, getUsername } from '../lib/auth';
 import { navItems } from '../lib/nav';
 
@@ -7,8 +8,11 @@ export function Topbar() {
   const username = getUsername();
 
   const logout = () => {
-    clearToken();
-    navigate('/login', { replace: true });
+    // Önce Manager'da refresh token iptal edilsin, sonra yerel token silinsin
+    logoutApi().finally(() => {
+      clearToken();
+      navigate('/login', { replace: true });
+    });
   };
 
   return (

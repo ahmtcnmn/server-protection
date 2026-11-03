@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { listAgents } from '../api/agents';
 import { listEvents } from '../api/events';
+import { AttackDetails } from '../components/AttackDetails';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { usePolling } from '../hooks/usePolling';
 import { severityToLevel } from '../lib/mappers';
@@ -35,7 +36,7 @@ export function EventsListPage() {
   const [params] = useSearchParams();
   const [agentId, setAgentId] = useState<string>(params.get('agentId') ?? '');
   const [type, setType] = useState('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(params.get('search') ?? '');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [severityMin, setSeverityMin] = useState<number | undefined>(undefined);
@@ -323,9 +324,11 @@ export function EventsListPage() {
                 </div>
               </div>
 
+              <AttackDetails event={selectedEvent} />
+
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-end">
-                  <p className="font-label-caps text-label-caps text-on-surface-variant">Raw Payload</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant">Raw Log Line</p>
                   <button onClick={copyRaw} className="text-primary font-body-sm text-[11px] hover:underline flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">{copied ? 'check' : 'content_copy'}</span>
                     {copied ? 'Copied' : 'Copy'}

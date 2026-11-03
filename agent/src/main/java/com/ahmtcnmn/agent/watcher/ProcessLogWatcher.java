@@ -54,7 +54,7 @@ public class ProcessLogWatcher {
 
                         if (detector.isSuspicious(satir)) {
                             ColorLogger.warn("TESPİT", detector.eventType() + " | " + ColorLogger.cut(satir, 100));
-                            heartbeatTask.sendDetectedEvent(satir, detector.eventType());
+                            heartbeatTask.sendDetectedEvent(satir, detector.eventType(), detector.severity());
                         }
                     }
                     

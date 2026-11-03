@@ -47,7 +47,7 @@ public class FileLogWatcher extends TailerListenerAdapter {
         ColorLogger.debug("LOG", filePath + ": " + ColorLogger.cut(line, 120));
         if (detector.isSuspicious(line)) {
             ColorLogger.warn("TESPİT", detector.eventType() + " | " + ColorLogger.cut(line, 100));
-            heartbeatTask.sendDetectedEvent(line, detector.eventType());
+            heartbeatTask.sendDetectedEvent(line, detector.eventType(), detector.severity());
         }
     } 
 

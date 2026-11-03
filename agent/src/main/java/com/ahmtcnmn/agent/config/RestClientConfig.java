@@ -1,20 +1,20 @@
 package com.ahmtcnmn.agent.config;
 
 import java.net.http.HttpClient;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
+/**
+ * Manager'a giden HTTPS istemcisi. Manager'ın sertifikası self-signed olduğu için JDK'nın varsayılan
+ * truststore'u ona güvenmez; yalnız "manager" SSL bundle'ındaki sertifikaya güvenilir (spring.ssl.bundle.pem.manager).
+ * Hostname de doğrulanır: sertifika CN=localhost olduğundan base-url localhost olmalı (ters SSH tüneli zaten öyle).
+ */
 @Configuration
 public class RestClientConfig {
 
@@ -22,18 +22,9 @@ public class RestClientConfig {
     private String managerBaseUrl;
 
     @Bean
-    public RestClient restClient() throws Exception {
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, new TrustManager[] {
-            new X509TrustManager() {
-                public void checkClientTrusted(X509Certificate[] chain, String authType) {}
-                public void checkServerTrusted(X509Certificate[] chain, String authType) {}
-                public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-            }
-        }, new SecureRandom());
-
+    public RestClient restClient(SslBundles sslBundles) {
         HttpClient httpClient = HttpClient.newBuilder()
-            .sslContext(sslContext)
+            .sslContext(sslBundles.getBundle("manager").createSslContext())
             .build();
 
         ClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);

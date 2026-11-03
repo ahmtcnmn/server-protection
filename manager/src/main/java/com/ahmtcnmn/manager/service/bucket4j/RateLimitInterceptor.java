@@ -30,7 +30,10 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;   // API key yoksa zaten ApiKeyInterceptor reddedecek, burada uğraşmaya gerek yok
         }
 
-        Bucket bucket = rateLimiterService.resolveBucket(apiKey, 60, Duration.ofMinutes(1));
+        // Event'ler ve kontrol trafiği (heartbeat, komut, decision stream) ayrı kovalarda:
+        // saldırı anında yağan event'ler kovayı bitirip ban kararlarının Agent'a ulaşmasını geciktirmesin
+        boolean isEvent = request.getRequestURI().startsWith("/api/events/");
+        Bucket bucket = rateLimiterService.resolveBucket(apiKey + (isEvent ? ":events" : ":control"), 60, Duration.ofMinutes(1));
         if(bucket.tryConsume(1)){
             return true;
         }else{

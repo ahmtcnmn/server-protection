@@ -26,7 +26,11 @@ public class LoginRateLimitInterceptor implements HandlerInterceptor{
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws JsonProcessingException, IOException{
         String clientIp = request.getRemoteAddr();
-        Bucket bucket = rateLimiterService.resolveBucket("login:"+clientIp,5, Duration.ofMinutes(1));
+        // Login şifre denemesine karşı sıkı (5/dk); refresh token tahmin edilemez, ayrı ve geniş kova (30/dk)
+        boolean isRefresh = request.getRequestURI().endsWith("/refresh");
+        Bucket bucket = isRefresh
+                ? rateLimiterService.resolveBucket("refresh:" + clientIp, 30, Duration.ofMinutes(1))
+                : rateLimiterService.resolveBucket("login:" + clientIp, 5, Duration.ofMinutes(1));
         if(bucket.tryConsume(1)){
             return true;
         }else{

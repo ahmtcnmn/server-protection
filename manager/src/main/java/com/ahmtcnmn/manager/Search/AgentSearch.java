@@ -22,7 +22,10 @@ public class AgentSearch {
             if (isOnline) {
                 return criteriaBuilder.greaterThan(root.get("lastSeen"), java.time.Instant.now().minusSeconds(60));
             } else {
-                return criteriaBuilder.lessThanOrEqualTo(root.get("lastSeen"), java.time.Instant.now().minusSeconds(60));
+                // Hiç heartbeat göndermemiş (lastSeen = null) Agent'lar da offline sayılır
+                return criteriaBuilder.or(
+                    criteriaBuilder.isNull(root.get("lastSeen")),
+                    criteriaBuilder.lessThanOrEqualTo(root.get("lastSeen"), java.time.Instant.now().minusSeconds(60)));
             }
         };
     }

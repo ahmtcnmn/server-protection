@@ -54,11 +54,11 @@ public class HeartbeatTask {
         }
     }
 
-    public boolean sendDetectedEvent(String rawData, String eventType) {
+    public boolean sendDetectedEvent(String rawData, String eventType, int severity) {
         String sourceIp = extractSourceIp.extractIp(rawData);
         DtoEventRequest event = DtoEventRequest.builder()
             .eventType(eventType)
-            .severity(5)
+            .severity(severity)
             .rawData(rawData)
             .sourceIp(sourceIp)
             .build();

@@ -27,6 +27,12 @@ public class DbAuthFailureDetector implements Detector {
     public String eventType() {
         return "DB_AUTH_FAILURE";
     }
+
+    // Tek başına saldırı sayılmaz (yanlış şifre de olabilir)
+    @Override
+    public int severity() {
+        return 3;
+    }
     
 }
 

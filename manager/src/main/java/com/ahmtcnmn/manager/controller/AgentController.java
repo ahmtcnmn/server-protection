@@ -52,7 +52,7 @@ public class AgentController extends RestBaseController implements IAgentControl
 
     @Override
     @PostMapping("/register")
-    public RootEntity<DtoRegisterResponse> registerAgent(@RequestBody DtoRegisterRequest request) {
+    public RootEntity<DtoRegisterResponse> registerAgent(@Valid @RequestBody DtoRegisterRequest request) {
         return ok(agentService.registerAgent(request));
     }
 

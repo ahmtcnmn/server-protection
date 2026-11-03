@@ -11,6 +11,7 @@ public enum MessageType {
     AGENT_ALREADY_EXISTS("Agent already exists", HttpStatus.CONFLICT),
     INVALID_API_KEY("Invalid API key", HttpStatus.UNAUTHORIZED),
     MISSING_API_KEY("Missing API key", HttpStatus.UNAUTHORIZED),
+    INVALID_REFRESH_TOKEN("Invalid refresh token", HttpStatus.UNAUTHORIZED),
     AGENT_OFFLINE("Agent is offline", HttpStatus.CONFLICT),
 
     INVALID_EVENT_TYPE("Invalid event type", HttpStatus.BAD_REQUEST),
@@ -18,6 +19,11 @@ public enum MessageType {
     EVENT_VALIDATION_FAILED("Event validation failed", HttpStatus.BAD_REQUEST),
 
     COMMAND_NOT_FOUND("Command not found", HttpStatus.NOT_FOUND),
+    DECISION_NOT_FOUND("Decision not found", HttpStatus.NOT_FOUND),
+    INVALID_DECISION("Invalid decision", HttpStatus.BAD_REQUEST),
+    ALLOWLIST_ENTRY_NOT_FOUND("Allowlist entry not found", HttpStatus.NOT_FOUND),
+    ALLOWLIST_ENTRY_EXISTS("Allowlist entry already exists", HttpStatus.CONFLICT),
+    INVALID_ALLOWLIST_ENTRY("Invalid allowlist entry", HttpStatus.BAD_REQUEST),
     COMMAND_EXECUTION_FAILED("Command execution failed", HttpStatus.INTERNAL_SERVER_ERROR),
     INVALID_COMMAND_PARAMETERS("Invalid command parameters", HttpStatus.BAD_REQUEST),
 

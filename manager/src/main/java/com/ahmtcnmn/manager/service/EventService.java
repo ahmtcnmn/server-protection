@@ -15,7 +15,6 @@ import com.ahmtcnmn.manager.common.exception.MessageType;
 import com.ahmtcnmn.manager.common.exceptionController.AgentNotFoundException;
 import com.ahmtcnmn.manager.dto.DtoEventTypeCount;
 import com.ahmtcnmn.manager.dto.EventTypeCount;
-import com.ahmtcnmn.manager.dto.Command.DtoCommandRequest;
 import com.ahmtcnmn.manager.dto.Event.DtoEventRequest;
 import com.ahmtcnmn.manager.dto.Event.DtoEventResponse;
 import com.ahmtcnmn.manager.model.Agent;
@@ -29,13 +28,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class EventService {
 
-    private final CommandService commandService;
+    private final DecisionService decisionService;
 
     private final EventsRepository eventsRepository;
     
-    @Value("${security.whitelisted-ips}")
-    private List<String> whitelistedIps;
-
     // Aynı IP'den 60 sn içinde bu kadar SQL_INJECTION gelirse BLOCK_IP üretilir
     @Value("${security.sqli-threshold:3}")
     private int sqliThreshold;
@@ -106,20 +102,9 @@ public class EventService {
         );
 
         if (recentCount >= sqliThreshold) {
-            // 📝 10.4'teki whitelist kontrolüne geçin
-            if (whitelistedIps.contains(savedEvent.getSourceIp())) {
-            ColorLogger.warn("IP " + savedEvent.getSourceIp() + " whitelist'te, engellenmiyor");
-            return;
-        }
-        // Agent henüz almadığı bir BLOCK_IP varsa yenisini üretme (eşik aşıldıktan sonra gelen
-        // her event ayrı komut oluşturuyordu)
-        Long agentId = savedEvent.getAgent().getId();
-        if (commandService.hasPendingCommand(agentId, "BLOCK_IP", savedEvent.getSourceIp())) {
-            return;
-        }
-        DtoCommandRequest blockCommand = new DtoCommandRequest("BLOCK_IP", savedEvent.getSourceIp());
-        commandService.createCommand(agentId, blockCommand);
-        ColorLogger.warn("IP " + savedEvent.getSourceIp() + " için otomatik engelleme komutu oluşturuldu");
+            // Whitelist, mükerrer ban ve süre kontrolü DecisionService'te
+            decisionService.raiseScenario("http-sqli-threshold", savedEvent.getAgent(), savedEvent.getSourceIp(),
+                    "SQL_INJECTION", since, recentCount);
         }
     }
 }

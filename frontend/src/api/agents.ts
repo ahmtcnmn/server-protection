@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, type RootEntity } from './client';
 import type { AgentResponse, Page } from '../types';
 
 export interface ListAgentsParams {
@@ -15,4 +15,15 @@ export function listAgents(params: ListAgentsParams) {
 
 export function getAgent(id: number) {
   return apiClient.get<AgentResponse>(`/agents/${id}`).then((r) => r.data);
+}
+
+export interface RegisterAgentResult {
+  agentId: number;
+  apiKey: string; // yalnız bu yanıtta görünür; Manager'da hash'i saklanır
+}
+
+export function registerAgent(hostName: string) {
+  return apiClient
+    .post<RootEntity<RegisterAgentResult>>('/agents/register', { hostName })
+    .then((r) => r.data.data);
 }

@@ -26,6 +26,7 @@ export interface DashboardSummary {
   onlineAgents: number;
   eventsTotal: number;
   criticalEventsToday: number;
+  activeBlocks: number;
 }
 
 export interface TimelinePoint {
@@ -69,5 +70,45 @@ export interface CommandResponse {
 // Agent'taki detector'ların ve executor'ların ürettiği event tipleri
 export const EVENT_TYPES = ['SQL_INJECTION', 'DB_AUTH_FAILURE', 'SUSPICIOUS_SYSTEM_ACTIVITY', 'IP_BLOCKED'] as const;
 
-// Agent'ın desteklediği komutlar (CommandExecutor implementasyonları)
-export const COMMAND_TYPES = ['PING', 'BLOCK_IP'] as const;
+// Agent'ın desteklediği komutlar (CommandExecutor implementasyonları).
+// IP engelleme komutla değil, ban kararlarıyla (Blocks sayfası) yapılır.
+export const COMMAND_TYPES = ['PING'] as const;
+
+export type DecisionStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+
+export interface DecisionResponse {
+  id: number;
+  value: string;
+  scope: 'GLOBAL' | 'AGENT';
+  type: string;
+  origin: 'SCENARIO' | 'MANUAL' | 'ML';
+  scenario: string | null;
+  reason: string | null;
+  targetAgentId: number | null;
+  targetAgentHostname: string | null;
+  alertId: number | null;
+  alertEventsCount: number | null;
+  alertAgentHostname: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  status: DecisionStatus;
+}
+
+// builtIn = true → Manager config'inden gelir (security.whitelisted-ips), id'si yoktur ve silinemez
+export interface AllowlistEntry {
+  id: number | null;
+  value: string;
+  reason: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+  expiresAt: string | null;
+  builtIn: boolean;
+}
+
+export interface AllowlistCreated {
+  entry: AllowlistEntry;
+  revokedDecisions: number;
+}

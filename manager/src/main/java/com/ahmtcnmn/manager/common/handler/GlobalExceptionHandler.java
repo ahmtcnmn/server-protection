@@ -51,12 +51,27 @@ public class GlobalExceptionHandler {
     }
 
     // Path/query parametre hataları da 400'e düşer; detay sadece loga yazılır.
-    @ExceptionHandler({ MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class })
+    // HttpMessageNotReadableException: bozuk JSON gövdesi ya da yanlış tipte alan (500 yerine 400)
+    @ExceptionHandler({ MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class,
+            org.springframework.http.converter.HttpMessageNotReadableException.class })
     public ResponseEntity<ErrorResponse> handleBadRequest(java.lang.Exception ex, WebRequest request) {
         log.warn("Bad request at {}: {}", path(request), ex.getMessage());
         ErrorResponse body = ErrorResponse.of(
                 HttpStatus.BAD_REQUEST, "BAD_REQUEST", "İstek parametreleri geçersiz", path(request));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // Olmayan adres (ör. tarayıcının istediği /favicon.ico) 500 değil 404; yanlış HTTP metodu 405.
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(java.lang.Exception ex, WebRequest request) {
+        ErrorResponse body = ErrorResponse.of(HttpStatus.NOT_FOUND, "NOT_FOUND", "Adres bulunamadı", path(request));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(java.lang.Exception ex, WebRequest request) {
+        ErrorResponse body = ErrorResponse.of(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", ex.getMessage(), path(request));
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
     }
 
     // 3) Kimlik/yetki hataları (Spring Security).

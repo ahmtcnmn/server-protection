@@ -51,5 +51,11 @@ public class SqliDetector implements Detector  {
         return "SQL_INJECTION";
     }
 
+    // Eşik aşılınca ban kararına giden saldırı
+    @Override
+    public int severity() {
+        return 5;
+    }
+
 
 }

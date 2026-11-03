@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listAgents } from '../api/agents';
 import { usePolling } from '../hooks/usePolling';
+import { RegisterAgentDialog } from '../components/RegisterAgentDialog';
 import { StatusDot } from '../components/StatusDot';
 import { isOnlineToStatus } from '../lib/mappers';
 
@@ -12,12 +13,13 @@ export function AgentsListPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     setPage(0);
   }, [statusFilter, query]);
 
-  const { data: pageData, loading, error } = usePolling(
+  const { data: pageData, loading, error, refresh } = usePolling(
     () =>
       listAgents({
         search: query || undefined,
@@ -64,6 +66,13 @@ export function AgentsListPage() {
               type="text"
             />
           </div>
+          <button
+            onClick={() => setDialogOpen(true)}
+            className="bg-primary-container text-on-primary-container font-body-sm font-semibold px-4 py-1.5 rounded hover:bg-primary transition-colors shadow-sm flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            Add agent
+          </button>
         </div>
       </div>
 
@@ -137,6 +146,7 @@ export function AgentsListPage() {
           </div>
         </div>
       </div>
+      {dialogOpen && <RegisterAgentDialog onClose={() => setDialogOpen(false)} onRegistered={refresh} />}
     </div>
   );
 }

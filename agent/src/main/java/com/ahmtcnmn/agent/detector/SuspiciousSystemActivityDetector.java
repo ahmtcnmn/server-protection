@@ -30,4 +30,10 @@ public class SuspiciousSystemActivityDetector implements Detector{
     public String eventType() {
         return "SUSPICIOUS_SYSTEM_ACTIVITY";
     }
+
+    // SSH başarısız giriş vb.; tek satır saldırı kanıtı değil
+    @Override
+    public int severity() {
+        return 3;
+    }
 }

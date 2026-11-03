@@ -28,13 +28,14 @@ public class CommandPollController {
     @GetMapping("/pending")
     public List<DtoCommandResponse> getPendingCommands(HttpServletRequest request) {
         Agent agent = (Agent) request.getAttribute("authenticatedAgent");
-        return commandService.getPendingCommands(agent.getId()).stream()
+        return commandService.deliverPendingCommands(agent.getId()).stream()
             .map(DtoCommandResponse::fromEntity)
             .toList();
     }
 
     @PostMapping("/{id}/result")
-    public void submitResult(@PathVariable Long id, @Valid @RequestBody DtoCommandResult result) {
-        commandService.updateCommandResult(id, result);
+    public void submitResult(@PathVariable Long id, @Valid @RequestBody DtoCommandResult result, HttpServletRequest request) {
+        Agent agent = (Agent) request.getAttribute("authenticatedAgent");
+        commandService.updateCommandResult(agent, id, result);
     }
 }

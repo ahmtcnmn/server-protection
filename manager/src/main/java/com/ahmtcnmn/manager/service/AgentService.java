@@ -53,15 +53,15 @@ public class AgentService implements IAgentService {
 
     @Override
     public DtoRegisterResponse registerAgent(DtoRegisterRequest request) {
-        if (agentRepository.existsByHostname(request.hostName())) {
+        if (agentRepository.existsByHostname(request.hostName().trim())) {
             throw new DuplicateResourceException(MessageType.AGENT_ALREADY_EXISTS, "Agent with the same host name already exists");
         }
         String rawApiKey = generateApiKey.generateApiKey();
         String hashedKey = hashApiKey(rawApiKey);
         Agent agent = new Agent();
-        agent.setHostname(request.hostName());
+        agent.setHostname(request.hostName().trim());
         agent.setApiKeyHash(hashedKey);
-        agent.setLastSeen(Instant.now());
+        // lastSeen boş kalır: ilk heartbeat gelene kadar Agent "online" görünmesin
         agent.setCreatedAt(Instant.now());
         Agent saved = agentRepository.save(agent);
         return new DtoRegisterResponse(saved.getId(), rawApiKey);
@@ -72,8 +72,13 @@ public class AgentService implements IAgentService {
         if (search != null && !search.isEmpty()) {
             spec = spec.and(AgentSearch.hasHostname(search));
         }
-        if (status != null && !status.isEmpty()) {
-            spec = spec.and(AgentSearch.isOnline(Boolean.parseBoolean(status)));
+        // "true"/"online" → çevrimiçi, "false"/"offline" → çevrimdışı; boş ya da "all" → filtre yok
+        if (status != null) {
+            switch (status.trim().toLowerCase()) {
+                case "true", "online" -> spec = spec.and(AgentSearch.isOnline(true));
+                case "false", "offline" -> spec = spec.and(AgentSearch.isOnline(false));
+                default -> { }
+            }
         }
         Page<Agent> agents = agentRepository.findAll(spec, pageable);
         return agents.map(DtoAgentResponse::from);   // Page<Agent> → Page<AgentResponse>

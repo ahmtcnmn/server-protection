@@ -5,6 +5,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { AgentsListPage } from './pages/AgentsListPage';
 import { AgentDetailPage } from './pages/AgentDetailPage';
 import { EventsListPage } from './pages/EventsListPage';
+import { DecisionsPage } from './pages/DecisionsPage';
+import { AllowlistPage } from './pages/AllowlistPage';
 import { LoginPage } from './pages/LoginPage';
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
           <Route path="/agents" element={<AgentsListPage />} />
           <Route path="/agents/:agentId" element={<AgentDetailPage />} />
           <Route path="/events" element={<EventsListPage />} />
+          <Route path="/blocks" element={<DecisionsPage />} />
+          <Route path="/allowlist" element={<AllowlistPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

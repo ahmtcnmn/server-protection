@@ -47,4 +47,11 @@ public class Events {
     
     @Column(name = "source_ip")
     private String sourceIp;
+
+    // Bu event bir alert'i tetikleyen olaylardan biriyse dolu (ör. SQLi eşiği aşıldığında)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "alert_id")
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
+    private Alert alert;
 }

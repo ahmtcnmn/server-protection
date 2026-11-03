@@ -70,7 +70,7 @@ export function DashboardPage() {
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-element-gap mb-element-gap">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-element-gap mb-element-gap">
         <div className="bg-surface border border-border rounded p-6">
           <div className="flex justify-between items-start mb-2">
             <span className="font-label-caps text-label-caps text-on-surface-variant">Total Agents</span>
@@ -111,6 +111,17 @@ export function DashboardPage() {
             <div className="font-headline-lg text-headline-lg font-bold text-error">{summary.criticalEventsToday}</div>
           </div>
         </div>
+
+        <Link to="/blocks" className="bg-surface border border-border rounded p-6 relative overflow-hidden hover:border-warning transition-colors">
+          <div className="absolute inset-0 bg-warning/5 border-l-2 border-warning" />
+          <div className="relative z-10">
+            <div className="flex justify-between items-start mb-2">
+              <span className="font-label-caps text-label-caps text-on-surface-variant">Active Blocks</span>
+              <span className="material-symbols-outlined text-warning">block</span>
+            </div>
+            <div className="font-headline-lg text-headline-lg font-bold text-warning">{summary.activeBlocks}</div>
+          </div>
+        </Link>
       </div>
 
       {/* Middle Block */}

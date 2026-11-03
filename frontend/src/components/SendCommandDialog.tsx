@@ -3,8 +3,6 @@ import { errorMessage } from '../api/client';
 import { sendCommand } from '../api/commands';
 import { COMMAND_TYPES } from '../types';
 
-const IP_PATTERN = /^[0-9a-fA-F:.]{2,45}$/; // Agent'taki UfwFirewall ile aynı kontrol
-
 interface Props {
   agentId: number;
   hostname: string;
@@ -14,21 +12,14 @@ interface Props {
 
 export function SendCommandDialog({ agentId, hostname, onClose, onSent }: Props) {
   const [commandType, setCommandType] = useState<string>('PING');
-  const [payload, setPayload] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const needsIp = commandType === 'BLOCK_IP';
-
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (needsIp && !IP_PATTERN.test(payload.trim())) {
-      setError('Geçerli bir IP adresi girin');
-      return;
-    }
     setSubmitting(true);
     setError(null);
-    sendCommand(agentId, commandType, needsIp ? payload.trim() : undefined)
+    sendCommand(agentId, commandType)
       .then(() => {
         onSent();
         onClose();
@@ -52,6 +43,7 @@ export function SendCommandDialog({ agentId, hostname, onClose, onSent }: Props)
         </div>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
           Target: <span className="font-data-mono text-primary">{hostname}</span>. The agent picks up commands every 10 seconds.
+          To block an IP, use the <b>Blocks</b> page.
         </p>
 
         <label className="flex flex-col gap-1">
@@ -69,21 +61,6 @@ export function SendCommandDialog({ agentId, hostname, onClose, onSent }: Props)
           </select>
         </label>
 
-        {needsIp && (
-          <label className="flex flex-col gap-1">
-            <span className="font-label-caps text-label-caps text-on-surface-variant">IP address</span>
-            <input
-              value={payload}
-              onChange={(e) => setPayload(e.target.value)}
-              placeholder="203.0.113.7"
-              autoFocus
-              className="bg-background border border-border rounded px-3 py-2 font-data-mono text-data-mono focus:outline-none focus:border-primary-container"
-            />
-            <span className="font-body-sm text-body-sm text-warning">
-              Blocks this IP in the agent's firewall (ufw). Don't enter your own IP.
-            </span>
-          </label>
-        )}
 
         {error && <p className="font-body-sm text-body-sm text-error">{error}</p>}
 

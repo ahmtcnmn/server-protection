@@ -6,6 +6,7 @@ import com.ahmtcnmn.manager.dto.Dashboard.DtoDashboardSummary;
 import com.ahmtcnmn.manager.dto.Dashboard.DtoTimelinePoint;
 import com.ahmtcnmn.manager.model.Events;
 import com.ahmtcnmn.manager.repository.AgentRepository;
+import com.ahmtcnmn.manager.repository.DecisionRepository;
 import com.ahmtcnmn.manager.repository.EventsRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class DashboardService {
 
     private final AgentRepository agentRepository;
     private final EventsRepository eventsRepository;
+    private final DecisionRepository decisionRepository;
 
     public DtoDashboardSummary getSummary() {
         long totalAgents = agentRepository.count();
@@ -43,7 +45,8 @@ public class DashboardService {
                 .and(EventSearch.severityBetween(5, 5))
         );
 
-        return new DtoDashboardSummary(totalAgents, onlineAgents, eventsToday, criticalEventsToday);
+        return new DtoDashboardSummary(totalAgents, onlineAgents, eventsToday, criticalEventsToday,
+                decisionRepository.countByRevokedAtIsNull());
     }
 
     public List<DtoTimelinePoint> getEventsTimeline(int hours){

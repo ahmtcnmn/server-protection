@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<!--
+		Ortak kural motoru: YAML kuralları, parser ve detector. Saf Java, Spring'e bağımlı değil.
+		Agent ve Manager bu artifact'i kullanır; değişince önce bu proje kurulur:
+		  ./mvnw install        (engine klasöründe)
+	-->
+	<groupId>com.ahmtcnmn</groupId>
+	<artifactId>sentinel-engine</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>sentinel-engine</name>
+
+	<properties>
+		<maven.compiler.release>21</maven.compiler.release>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<!-- Spring Boot 4.1'in yönettiği sürümlerle aynı: Agent/Manager'da sürüm çakışması olmasın -->
+		<snakeyaml.version>2.6</snakeyaml.version>
+		<junit-jupiter.version>6.0.3</junit-jupiter.version>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+			<version>${snakeyaml.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>${junit-jupiter.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.14.1</version>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.5.4</version>
+			</plugin>
+		</plugins>
+	</build>
+</project>

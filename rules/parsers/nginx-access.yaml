@@ -1,0 +1,8 @@
+# nginx/apache "combined" access log formatı:
+#   $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"
+# url boşluk içerebilir (curl yerine elle gönderilen "GET /a b HTTP/1.1"); nginx $request'teki " karakterini \x22 yazar.
+# Geçersiz istek satırları (ör. TLS el sıkışmasının düz HTTP portuna gelmesi: "\x16\x03...") bu parser'a uymaz.
+name: nginx-access
+description: nginx/apache combined access log
+regex: '^(?<sourceIp>\S+) \S+ (?<user>\S+) \[(?<time>[^\]]+)\] "(?<method>[A-Z]+) (?<url>[^"]*?)(?: (?<protocol>HTTP/[\d.]+))?" (?<status>\d{3}) (?<bytes>\S+)(?: "(?<referer>[^"]*)" "(?<userAgent>[^"]*)")?'
+timeFormat: "dd/MMM/yyyy:HH:mm:ss Z"

@@ -1,0 +1,19 @@
+# İstek URL'inde (path + query, URL-decode edilmiş) SQL injection imzaları.
+# Yalnız url alanına bakar: Referer ya da User-Agent'taki metin event üretmez.
+# POST gövdesi access log'a yazılmadığı için form içindeki saldırılar görülmez.
+name: sqli-basic
+description: URL'de SQL injection imzası
+eventType: SQL_INJECTION
+severity: 5
+parsers: [nginx-access]
+field: url
+transforms: [urlDecode]
+maxLength: 4096
+patterns:
+  # ' OR 1=1, " and 2=
+  - '(?i)(''|")\s*(or|and)\s*(''|")?\d+(''|")?\s*='
+  - '(?i)union\s+(all\s+)?select'
+  # SQL yorumu. Geniş bir desen: normal URL'lerde de geçebilir (bkz. tests/detectors/sqli-basic.yaml,
+  # knownFalsePositives). Madde 5.0'da "zayıf desen" olarak ayrı kurala ayrılacak.
+  - '(--|#|/\*)'
+  - '(?i)\b(drop\s+table|xp_cmdshell|sleep\s*\()'

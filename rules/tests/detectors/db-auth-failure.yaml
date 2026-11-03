@@ -1,0 +1,10 @@
+detector: db-auth-failure
+match:
+  - name: MySQL access denied
+    line: "2026-11-03T14:00:00Z 12 [Note] Access denied for user 'root'@'192.0.2.45' (using password: YES)"
+    matched: Access denied
+  - name: PostgreSQL authentication failed
+    line: '2026-11-03 14:00:00 UTC [811] FATAL:  password authentication failed for user "postgres"'
+noMatch:
+  - name: Başarılı bağlantı
+    line: "2026-11-03T14:00:00Z 12 [Note] Connect root@localhost on manager using TCP/IP"

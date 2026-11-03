@@ -1,0 +1,16 @@
+detector: system-suspicious
+match:
+  - name: SSH başarısız şifre
+    line: 'Nov  3 14:00:00 vds sshd[811]: Failed password for root from 45.148.10.7 port 52144 ssh2'
+  - name: Geçersiz kullanıcı
+    line: 'Nov  3 14:00:00 vds sshd[811]: Invalid user oracle from 45.148.10.7 port 52144'
+    matched: Invalid user
+  - name: PAM authentication failure
+    line: 'Nov  3 14:00:00 vds sshd[811]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=45.148.10.7'
+  - name: Root oturumu açıldı
+    line: 'Nov  3 14:00:00 vds sshd[811]: pam_unix(sshd:session): session opened for user root(uid=0) by (uid=0)'
+noMatch:
+  - name: Başarılı anahtar girişi
+    line: 'Nov  3 14:00:00 vds sshd[811]: Accepted publickey for deploy from 203.0.113.9 port 50122 ssh2'
+  - name: Sıradan servis mesajı
+    line: 'Nov  3 14:00:00 vds systemd[1]: Started Daily apt upgrade.'

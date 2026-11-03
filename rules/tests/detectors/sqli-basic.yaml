@@ -1,0 +1,47 @@
+detector: sqli-basic
+match:
+  - name: UNION SELECT
+    line: '10.0.0.7 - - [23/Oct/2026:10:01:00 +0300] "GET /item?id=2%20UNION%20ALL%20SELECT%201 HTTP/1.1" 200 12 "-" "curl"'
+    matched: UNION ALL SELECT
+  - name: UNION SELECT, + ile boşluk
+    line: '10.0.0.7 - - [23/Oct/2026:10:01:00 +0300] "GET /x?q=1+UNION+SELECT+user,pass+FROM+users HTTP/2.0" 404 0 "-" "curl"'
+    matched: UNION SELECT
+  - name: Tırnak + OR karşılaştırması (URL-encode)
+    line: '203.0.113.7 - - [03/Nov/2026:14:00:00 +0300] "GET /urun.php?id=1%27%20OR%201=1 HTTP/1.1" 200 512 "-" "curl"'
+    matched: "' OR 1="
+  - name: Çift tırnak + and
+    line: '203.0.113.7 - - [03/Nov/2026:14:00:00 +0300] "GET /a?u=x%22%20and%202=2 HTTP/1.1" 200 1 "-" "curl"'
+  - name: SQL yorumu (--)
+    line: '1.2.3.4 - - [01/Jan/2026:00:00:00 +0000] "GET /login?id=1-- HTTP/1.1" 200 0 "-" "curl"'
+    matched: "--"
+  - name: Yorum bloğu (/**/ ile boşluk atlatma)
+    line: '1.2.3.4 - - [01/Jan/2026:00:00:00 +0000] "GET /x?id=1/**/UNION/**/SELECT/**/1 HTTP/1.1" 200 0 "-" "curl"'
+  - name: sleep() ile zaman tabanlı
+    line: '1.2.3.4 - - [01/Jan/2026:00:00:00 +0000] "GET /x?id=1%20AND%20SLEEP(5) HTTP/1.1" 200 0 "-" "sqlmap/1.8"'
+  - name: DROP TABLE
+    line: '1.2.3.4 - - [01/Jan/2026:00:00:00 +0000] "GET /x?id=1;DROP%20TABLE%20users HTTP/1.1" 200 0 "-" "curl"'
+  - name: IPv6 kaynaklı saldırı
+    line: '2001:db8::7 - - [03/Nov/2026:14:00:00 +0300] "GET /x?id=1%20UNION%20SELECT%201 HTTP/1.1" 200 0 "-" "curl"'
+
+noMatch:
+  - name: Normal sayfa
+    line: '37.154.97.244 - - [29/Oct/2026:16:21:02 +0000] "GET /?_rsc=8nTjltbQWvg6NcbE HTTP/2.0" 200 10101 "https://mtmadana.com/" "Mozilla/5.0 (iPhone)"'
+  - name: Saldırı yalnız Referer'da (Ekim'deki false positive)
+    line: '6.6.6.6 - - [03/Nov/2026:00:24:05 +0000] "GET /style.css HTTP/1.1" 200 0 "https://x/?id=1--" "Mozilla"'
+  - name: Saldırı yalnız User-Agent'ta
+    line: '6.6.6.6 - - [03/Nov/2026:00:24:05 +0000] "GET / HTTP/1.1" 200 0 "-" "x UNION SELECT 1"'
+  - name: Kelime olarak "union" ve "select"
+    line: '1.2.3.4 - - [01/Jan/2026:00:00:00 +0000] "GET /blog/european-union?select=all HTTP/1.1" 200 0 "-" "Mozilla"'
+  - name: sleep kelimesi parantezsiz
+    line: '1.2.3.4 - - [01/Jan/2026:00:00:00 +0000] "GET /blog/sleep-tips HTTP/1.1" 200 0 "-" "Mozilla"'
+  - name: Ayrıştırılamayan satır event üretmez
+    line: 'UNION SELECT 1 -- format dışı satır'
+
+# Bugün yakalanan ama saldırı olmayan istekler. (--|#|/\*) deseni çok geniş; Madde 5.0'da zayıf desen
+# olarak ayrılınca bu örnekler noMatch'e (ya da eşiğe tabi kurala) taşınacak. Test, davranışın
+# farkında olmadan değişmesini önlemek için bunların BUGÜN eşleştiğini doğrular.
+knownFalsePositives:
+  - name: Slug içinde çift tire
+    line: '1.2.3.4 - - [01/Jan/2026:00:00:00 +0000] "GET /blog/yazi--2 HTTP/1.1" 200 0 "-" "Mozilla"'
+  - name: URL-encode edilmiş # (C# araması)
+    line: '1.2.3.4 - - [01/Jan/2026:00:00:00 +0000] "GET /ara?q=c%23 HTTP/1.1" 200 0 "-" "Mozilla"'

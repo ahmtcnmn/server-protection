@@ -1,0 +1,11 @@
+name: system-suspicious
+description: Sistem/SSH logunda şüpheli giriş hareketleri
+eventType: SUSPICIOUS_SYSTEM_ACTIVITY
+severity: 3
+parsers: [raw-line]
+patterns:
+  - '(?i)failed password'
+  - '(?i)authentication failure'
+  - '(?i)invalid user'
+  - '(?i)session opened for user root'
+  - '(?i)break-in attempt'

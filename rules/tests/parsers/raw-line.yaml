@@ -1,0 +1,13 @@
+parser: raw-line
+cases:
+  - name: MySQL başarısız giriş, IP satırın ortasında
+    line: "2026-11-03T14:00:00Z 12 [Note] Access denied for user 'root'@'192.0.2.45' (using password: YES)"
+    fields:
+      sourceIp: 192.0.2.45
+  - name: SSH başarısız giriş
+    line: 'Nov  3 14:00:00 vds sshd[811]: Failed password for invalid user admin from 45.148.10.7 port 52144 ssh2'
+    fields:
+      sourceIp: 45.148.10.7
+  - name: IP yoksa sourceIp alanı da yok
+    line: 'Nov  3 14:00:00 vds systemd[1]: Started Daily apt upgrade.'
+    absent: [sourceIp]

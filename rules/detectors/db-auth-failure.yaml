@@ -1,0 +1,8 @@
+name: db-auth-failure
+description: Veritabanında başarısız giriş (tek başına saldırı sayılmaz, yanlış şifre de olabilir)
+eventType: DB_AUTH_FAILURE
+severity: 3
+parsers: [raw-line]
+patterns:
+  - '(?i)access denied'
+  - '(?i)authentication failed'

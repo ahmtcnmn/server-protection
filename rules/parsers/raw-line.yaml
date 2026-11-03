@@ -1,0 +1,8 @@
+# Belirli bir formatı olmayan loglar (DB, sistem). Satırın tamamı "message" alanıdır;
+# kaynak IP satırdaki ilk IPv4 adresidir (eski ExtractSourceIp ile aynı davranış).
+# Madde 12'de sshd/mysql için ayrı parser'lar gelince bu yalnız yedek olarak kalır.
+name: raw-line
+description: Formatsız log satırı, ilk IPv4 kaynak IP sayılır
+regex: '^(?<message>.+)$'
+extract:
+  sourceIp: '\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b'

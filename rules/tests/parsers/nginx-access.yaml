@@ -1,0 +1,49 @@
+parser: nginx-access
+cases:
+  - name: VDS'ten gerçek satır (HTTP/2.0, Referer ve iPhone User-Agent)
+    line: '37.154.97.244 - - [29/Oct/2026:16:21:02 +0000] "GET /?_rsc=8nTjltbQWvg6NcbE HTTP/2.0" 200 10101 "https://mtmadana.com/" "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Mobile/15E148 Safari/604.1"'
+    fields:
+      sourceIp: 37.154.97.244
+      method: GET
+      url: /?_rsc=8nTjltbQWvg6NcbE
+      protocol: HTTP/2.0
+      status: "200"
+      bytes: "10101"
+      referer: https://mtmadana.com/
+      userAgent: Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Mobile/15E148 Safari/604.1
+    time: 2026-10-29T16:21:02Z
+
+  - name: URL-encode edilmiş saldırı ham haliyle alana yazılır (decode detector'da)
+    line: '203.0.113.7 - - [03/Nov/2026:14:00:00 +0300] "GET /urun.php?id=1%27%20OR%201=1--&sort=asc HTTP/1.1" 200 512 "-" "curl/8.7.1"'
+    fields:
+      sourceIp: 203.0.113.7
+      url: /urun.php?id=1%27%20OR%201=1--&sort=asc
+      referer: "-"
+    time: 2026-11-03T11:00:00Z
+
+  - name: URL'de boşluk (elle gönderilmiş istek)
+    line: '10.0.0.5 - - [23/Oct/2026:10:00:00 +0300] "GET /login?id=1 UNION SELECT pass FROM users HTTP/1.1" 200 12 "-" "curl"'
+    fields:
+      url: /login?id=1 UNION SELECT pass FROM users
+      protocol: HTTP/1.1
+
+  - name: IPv6 istemci
+    line: '2001:db8::7 - - [03/Nov/2026:14:00:00 +0300] "POST /api/login HTTP/1.1" 401 0 "-" "python-requests/2.32"'
+    fields:
+      sourceIp: 2001:db8::7
+      method: POST
+      status: "401"
+
+  - name: Referer ve User-Agent olmayan (common) format
+    line: '203.0.113.7 - - [03/Nov/2026:14:00:00 +0300] "GET /index.html HTTP/1.0" 304 0'
+    fields:
+      url: /index.html
+    absent: [referer, userAgent]
+
+  - name: Düz HTTP portuna gelen TLS el sıkışması (geçersiz istek satırı)
+    line: '198.51.100.3 - - [03/Nov/2026:14:00:00 +0300] "\x16\x03\x01\x02\x00\x01\x00\x01\xFC\x03\x03" 400 157 "-" "-"'
+    parsed: false
+
+  - name: Başka formatta satır
+    line: '2026/11/03 14:00:00 [error] 1234#0: *5 open() "/www/x" failed (2: No such file or directory)'
+    parsed: false

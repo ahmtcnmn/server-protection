@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -21,6 +22,8 @@ public final class CompiledParser {
     private final Map<String, Pattern> extract;
     private final DateTimeFormatter timeFormat;
     private final Set<String> fieldNames;
+    // namedGroups() sırasız bir Map döner; alanlar regex'teki sırayla yazılsın
+    private final java.util.List<String> groupsInOrder;
 
     CompiledParser(ParserSpec spec, Pattern regex, Map<String, Pattern> extract, DateTimeFormatter timeFormat, Set<String> fieldNames) {
         this.spec = spec;
@@ -28,6 +31,10 @@ public final class CompiledParser {
         this.extract = extract;
         this.timeFormat = timeFormat;
         this.fieldNames = fieldNames;
+        this.groupsInOrder = regex.namedGroups().entrySet().stream()
+                .sorted(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .toList();
     }
 
     public String name() {
@@ -50,7 +57,7 @@ public final class CompiledParser {
             return Optional.empty();
         }
         Map<String, String> fields = new LinkedHashMap<>();
-        for (String group : regex.namedGroups().keySet()) {
+        for (String group : groupsInOrder) {
             String value = m.group(group);
             if (value != null) {
                 fields.put(group, value);
@@ -63,7 +70,8 @@ public final class CompiledParser {
                 fields.put(e.getKey(), em.group(1));
             }
         }
-        return Optional.of(new ParsedLine(name(), line, Map.copyOf(fields), parseTime(fields.get("time"))));
+        // Sıra korunur (satırdaki sırayla): panelde ve JSON'da okunaklı olsun
+        return Optional.of(new ParsedLine(name(), line, Collections.unmodifiableMap(fields), parseTime(fields.get("time"))));
     }
 
     private Instant parseTime(String value) {

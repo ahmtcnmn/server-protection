@@ -1,23 +1,18 @@
-// nginx/apache "combined" log satırını ayrıştırır ve SQLi desenlerinin satırın neresinde eşleştiğini bulur.
-// Desenler Agent'taki SqliDetector ile aynı tutulmalı (Madde 4'te kurallar YAML'a taşınınca eşleşen kural Agent'tan gelecek).
+// Event'in istek bilgisi. Yeni event'lerde alanlar Agent'ın parser'ından gelir (event.fields);
+// fields'ı olmayan eski event'ler için ham satır burada "combined" formatına göre ayrıştırılır.
+// Tespit desenleri artık burada tutulmuyor: eşleşen kural ve yakalanan metin event'le birlikte gelir.
+
+import type { EventResponse } from '../types';
 
 export interface ParsedRequest {
-  clientIp: string;
-  time: string;
   method: string;
-  target: string; // URL-decode edilmiş istek hedefi (Agent'ın incelediği metin)
+  target: string; // URL-decode edilmiş istek hedefi (kuralın incelediği metin)
   path: string;
   params: { key: string; value: string }[];
-  protocol: string;
-  status: number;
-  bytes: string;
+  status: string | null;
+  bytes: string | null;
   referer: string | null;
   userAgent: string | null;
-}
-
-export interface SqliRule {
-  label: string;
-  pattern: RegExp;
 }
 
 export interface Match {
@@ -26,17 +21,10 @@ export interface Match {
   rule: string;
 }
 
-const COMBINED = /^(\S+) \S+ \S+ \[([^\]]+)\] "([A-Z]+) (\S+) (HTTP\/[\d.]+)" (\d{3}) (\S+)(?: "([^"]*)" "([^"]*)")?/;
-
-export const SQLI_RULES: SqliRule[] = [
-  { label: "Quote + OR/AND comparison (' or 1=1)", pattern: /('|")\s*(or|and)\s*('|")?\d+('|")?\s*=/gi },
-  { label: 'UNION SELECT', pattern: /union\s+(all\s+)?select/gi },
-  { label: 'SQL comment (--, #, /*)', pattern: /(--|#|\/\*)/g },
-  { label: 'Dangerous keyword (DROP TABLE, xp_cmdshell, sleep())', pattern: /\b(drop\s+table|xp_cmdshell|sleep\s*\()/gi },
-];
+const COMBINED = /^(\S+) \S+ \S+ \[([^\]]+)\] "([A-Z]+) ([^"]*?)(?: (HTTP\/[\d.]+))?" (\d{3}) (\S+)(?: "([^"]*)" "([^"]*)")?/;
 
 // Agent'taki Java URLDecoder ile aynı: '+' boşluk olur, %xx çözülür
-function decode(s: string) {
+export function decode(s: string) {
   try {
     return decodeURIComponent(s.replace(/\+/g, ' '));
   } catch {
@@ -44,10 +32,11 @@ function decode(s: string) {
   }
 }
 
-export function parseAccessLog(line: string): ParsedRequest | null {
-  const m = COMBINED.exec(line);
-  if (!m) return null;
-  const rawTarget = m[4];
+function orNull(v: string | undefined) {
+  return v && v !== '-' ? v : null;
+}
+
+function build(method: string, rawTarget: string, rest: Omit<ParsedRequest, 'method' | 'target' | 'path' | 'params'>): ParsedRequest {
   const q = rawTarget.indexOf('?');
   const rawPath = q >= 0 ? rawTarget.slice(0, q) : rawTarget;
   const rawQuery = q >= 0 ? rawTarget.slice(q + 1) : '';
@@ -59,31 +48,35 @@ export function parseAccessLog(line: string): ParsedRequest | null {
           : { key: decode(pair), value: '' };
       })
     : [];
-  return {
-    clientIp: m[1],
-    time: m[2],
-    method: m[3],
-    target: decode(rawTarget),
-    path: decode(rawPath),
-    params,
-    protocol: m[5],
-    status: Number(m[6]),
-    bytes: m[7],
-    referer: m[8] && m[8] !== '-' ? m[8] : null,
-    userAgent: m[9] && m[9] !== '-' ? m[9] : null,
-  };
+  return { method, target: decode(rawTarget), path: decode(rawPath), params, ...rest };
 }
 
-/** Metindeki tüm SQLi eşleşmeleri (başlangıca göre sıralı, çakışanlar birleştirilmez). */
-export function findSqliMatches(text: string): Match[] {
-  const matches: Match[] = [];
-  for (const rule of SQLI_RULES) {
-    rule.pattern.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = rule.pattern.exec(text)) !== null) {
-      matches.push({ start: m.index, end: m.index + m[0].length, rule: rule.label });
-      if (m[0].length === 0) rule.pattern.lastIndex++;
-    }
+/** Event'in HTTP isteği: önce Agent'ın alanları, yoksa (eski event) ham satır. İstek değilse null. */
+export function requestOf(event: EventResponse): ParsedRequest | null {
+  const f = event.fields;
+  if (f && f.method && f.url != null) {
+    return build(f.method, f.url, {
+      status: f.status ?? null,
+      bytes: f.bytes ?? null,
+      referer: orNull(f.referer),
+      userAgent: orNull(f.userAgent),
+    });
   }
-  return matches.sort((a, b) => a.start - b.start);
+  if (event.parser) return null; // ayrıştırılmış ama HTTP isteği değil (ör. raw-line)
+  const m = COMBINED.exec(event.rawData);
+  if (!m) return null;
+  return build(m[3], m[4], { status: m[6], bytes: m[7], referer: orNull(m[8]), userAgent: orNull(m[9]) });
+}
+
+/** Kuralın yakaladığı metnin metindeki geçtiği yerler (yakalanan metin dönüşümden sonraki haliyle gelir). */
+export function findMatches(text: string, matched: string | null, rule: string | null): Match[] {
+  if (!matched) return [];
+  const matches: Match[] = [];
+  let from = 0;
+  let i: number;
+  while ((i = text.indexOf(matched, from)) >= 0) {
+    matches.push({ start: i, end: i + matched.length, rule: rule ?? '' });
+    from = i + Math.max(1, matched.length);
+  }
+  return matches;
 }

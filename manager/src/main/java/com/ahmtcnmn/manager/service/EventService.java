@@ -1,7 +1,9 @@
 package com.ahmtcnmn.manager.service;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -64,15 +66,38 @@ public class EventService {
         event.setSeverity(eventRequest.severity());
         event.setRawData(eventRequest.rawData());
         event.setSourceIp(eventRequest.sourceIp());
+        event.setRule(eventRequest.rule());
+        event.setMatchField(eventRequest.matchField());
+        event.setMatched(eventRequest.matched());
+        event.setParser(eventRequest.parser());
+        event.setFields(limitFields(eventRequest.fields()));
+        event.setObservedAt(eventRequest.observedAt());
+        event.setQueued(Boolean.TRUE.equals(eventRequest.queued()));
         event.setTimestamp(Instant.now());              
         
         eventsRepository.save(event);  
         
-        if ("SQL_INJECTION".equals(event.getEventType())) {
+        // Kuyruktan geç gelen event'ler eşiğe sayılmaz: hepsi aynı anda gelip sahte bir "patlama" gibi görünür
+        // ve saatler önceki bir saldırı için şimdi ban verilirdi (roadmap 1.5)
+        if ("SQL_INJECTION".equals(event.getEventType()) && !event.getQueued()) {
             checkThreatThreshold(event);
         }
                         
         return "Event created successfully";
+    }
+
+    // Alan değerleri DB'de şişmesin (Agent zaten 2 KB'ta kesiyor; bu yalnız ikinci emniyet)
+    private static final int MAX_FIELD_VALUE = 4096;
+
+    private static Map<String, String> limitFields(Map<String, String> fields) {
+        if (fields == null || fields.isEmpty()) return null;
+        Map<String, String> result = new LinkedHashMap<>();
+        fields.forEach((k, v) -> {
+            if (k != null && v != null && k.length() <= 64) {
+                result.put(k, v.length() > MAX_FIELD_VALUE ? v.substring(0, MAX_FIELD_VALUE) : v);
+            }
+        });
+        return result;
     }
 
     public Page<DtoEventResponse> listEvents(

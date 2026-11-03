@@ -1,9 +1,14 @@
 package com.ahmtcnmn.agent.detector.Interface;
 
-public interface Detector {
-    boolean isSuspicious(String logLine);
-    String eventType();
+import java.util.List;
 
-    /** Event'in önem derecesi: 1 (düşük) – 5 (kritik). Panelde renk ve dashboard'daki "critical" sayısı buna göre. */
-    int severity();
+import com.ahmtcnmn.engine.Detection;
+import com.ahmtcnmn.engine.ParsedLine;
+
+/**
+ * Tespit stratejisi. İmza kuralları YAML'dan gelir (YamlDetector); regex'le ifade edilemeyen tespitler
+ * (ör. ML) bu arayüzü implement eden ayrı Java sınıfları olur. Her satır tüm Detector bean'lerinden geçer.
+ */
+public interface Detector {
+    List<Detection> detect(ParsedLine line);
 }

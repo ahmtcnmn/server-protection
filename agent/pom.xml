@@ -39,6 +39,12 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+		<!-- Ortak kural motoru (repo kökündeki engine/). Önce: cd ../engine && ./mvnw install -->
+		<dependency>
+			<groupId>com.ahmtcnmn</groupId>
+			<artifactId>sentinel-engine</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>

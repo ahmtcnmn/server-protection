@@ -1,8 +1,12 @@
 package com.ahmtcnmn.manager.model;
 
 import java.time.Instant;
+import java.util.Map;
+
+import com.ahmtcnmn.manager.model.converter.StringMapJsonConverter;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -47,6 +51,33 @@ public class Events {
     
     @Column(name = "source_ip")
     private String sourceIp;
+
+    // Eşleşen kural (rules/detectors altındaki name); eski event'lerde ve IP_BLOCKED'da null
+    @Column(length = 64)
+    private String rule;
+
+    // Kuralın incelediği alan (ör. url); null → ham satır
+    @Column(name = "match_field", length = 64)
+    private String matchField;
+
+    // Kuralın yakaladığı metin (ör. "UNION SELECT")
+    @Column(length = 512)
+    private String matched;
+
+    @Column(length = 64)
+    private String parser;
+
+    // Parser'ın çıkardığı alanlar (method, url, status, userAgent...), JSON olarak
+    @Convert(converter = StringMapJsonConverter.class)
+    @Column(columnDefinition = "TEXT")
+    private Map<String, String> fields;
+
+    // Agent'ın satırı gördüğü an (Agent saati)
+    @Column(name = "observed_at")
+    private Instant observedAt;
+
+    // Agent kuyruğunda beklemiş, geç gelmiş event (eşiğe sayılmaz)
+    private Boolean queued;
 
     // Bu event bir alert'i tetikleyen olaylardan biriyse dolu (ör. SQLi eşiği aşıldığında)
     @ManyToOne(fetch = FetchType.LAZY)

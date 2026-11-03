@@ -2,12 +2,11 @@ package com.ahmtcnmn.agent.watcher;
 
 import java.io.File;
 import java.time.Duration;
+import java.util.List;
 
 import org.apache.commons.io.input.Tailer;
 import org.apache.commons.io.input.TailerListenerAdapter;
 import com.ahmtcnmn.agent.Libs.ColorLogger;
-import com.ahmtcnmn.agent.client.HeartbeatTask;
-import com.ahmtcnmn.agent.detector.Interface.Detector;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -15,16 +14,16 @@ import jakarta.annotation.PreDestroy;
 
 public class FileLogWatcher extends TailerListenerAdapter {
     
-    private final Detector detector;
-    private final HeartbeatTask heartbeatTask;   
     private final String filePath;
+    private final List<String> parsers;
+    private final LogLineHandler handler;
 
     private Tailer tailer;
 
-    public FileLogWatcher(String filePath, Detector detector, HeartbeatTask heartbeatTask) {
+    public FileLogWatcher(String filePath, List<String> parsers, LogLineHandler handler) {
         this.filePath = filePath;
-        this.detector = detector;
-        this.heartbeatTask = heartbeatTask;
+        this.parsers = parsers;
+        this.handler = handler;
     }
 
     private boolean fileMissingLogged = false;
@@ -38,17 +37,13 @@ public class FileLogWatcher extends TailerListenerAdapter {
                 .setDelayDuration(Duration.ofMillis(1000))
                 .setTailFromEnd(true)
                 .get();
-        ColorLogger.info("İZLEME", filePath + " izleniyor → " + detector.eventType());
+        ColorLogger.info("İZLEME", filePath + " izleniyor → parser " + parsers);
     }
     
     @Override
     public void handle(String line) {
         fileMissingLogged = false;
-        ColorLogger.debug("LOG", filePath + ": " + ColorLogger.cut(line, 120));
-        if (detector.isSuspicious(line)) {
-            ColorLogger.warn("TESPİT", detector.eventType() + " | " + ColorLogger.cut(line, 100));
-            heartbeatTask.sendDetectedEvent(line, detector.eventType(), detector.severity());
-        }
+        handler.handle(filePath, line, parsers);
     } 
 
     @Override

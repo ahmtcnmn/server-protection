@@ -198,6 +198,8 @@ public class DecisionEnforcer {
                 .severity(3)
                 .rawData("ufw ile engellendi: " + d.value() + " (karar #" + d.id() + ")")
                 .sourceIp(d.value())
+                .observedAt(java.time.Instant.now())
+                .queued(false)
                 .build());
         } catch (Exception e) {
             ColorLogger.debug("ENGEL", "IP_BLOCKED bildirimi gönderilemedi: " + ManagerConnection.describe(e));

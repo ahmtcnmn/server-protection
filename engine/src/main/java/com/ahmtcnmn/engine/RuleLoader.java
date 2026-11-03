@@ -274,7 +274,7 @@ public final class RuleLoader {
             this.map = map;
             for (Object key : map.keySet()) {
                 if (!(key instanceof String k) || !allowed.contains(k)) {
-                    throw new RuleValidationException(file + ": bilinmeyen alan '" + key + "' (geçerli alanlar: " + allowed + ")");
+                    throw new RuleValidationException(file + ": bilinmeyen alan '" + key + "' (geçerli alanlar: " + new java.util.TreeSet<>(allowed) + ")");
                 }
             }
         }

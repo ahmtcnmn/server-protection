@@ -19,6 +19,15 @@ export interface EventResponse {
   severity: number;
   rawData: string;
   sourceIp: string | null;
+  // Agent'taki YAML kuralı: hangi kural, hangi alanda, neyi yakaladı (eski event'lerde null)
+  rule: string | null;
+  matchField: string | null;
+  matched: string | null;
+  // Parser'ın ayrıştırdığı alanlar (nginx-access: method, url, status, userAgent, referer...)
+  parser: string | null;
+  fields: Record<string, string> | null;
+  observedAt: string | null;
+  queued: boolean;
 }
 
 export interface DashboardSummary {

@@ -12,6 +12,7 @@ import com.ahmtcnmn.manager.dto.Event.DtoEventResponse;
 import com.ahmtcnmn.manager.service.EventService;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,7 +50,7 @@ public class EventController extends RestBaseController implements IRestBaseCont
 
     @Override
     @PostMapping("/create")
-    public RootEntity<String> createEvent(@RequestBody DtoEventRequest eventRequest, HttpServletRequest request) {
+    public RootEntity<String> createEvent(@Valid @RequestBody DtoEventRequest eventRequest, HttpServletRequest request) {
         return ok(eventService.createEvent(eventRequest,request));
         
     }

@@ -32,6 +32,7 @@ public class AgentService implements IAgentService {
 
     private final AgentRepository agentRepository;
     private final GenerateApiKey generateApiKey;
+    private final com.ahmtcnmn.manager.service.Rules.RuleService ruleService;
 
 
     private String hashApiKey(String rawKey) {
@@ -47,7 +48,7 @@ public class AgentService implements IAgentService {
     public DtoAgentResponse getAgentById(Long id) {
         Agent agent = agentRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException(MessageType.AGENT_NOT_FOUND, "Agent with ID " + id + " not found"));
-        return DtoAgentResponse.from(agent);
+        return DtoAgentResponse.from(agent, ruleService.currentVersion());
 
     }
 
@@ -81,7 +82,8 @@ public class AgentService implements IAgentService {
             }
         }
         Page<Agent> agents = agentRepository.findAll(spec, pageable);
-        return agents.map(DtoAgentResponse::from);   // Page<Agent> → Page<AgentResponse>
+        String rulesVersion = ruleService.currentVersion();
+        return agents.map(a -> DtoAgentResponse.from(a, rulesVersion));   // Page<Agent> → Page<AgentResponse>
     }
 
 

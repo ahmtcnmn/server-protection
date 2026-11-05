@@ -17,7 +17,10 @@ import com.ahmtcnmn.manager.controller.ImplementController.IAgentController;
 import com.ahmtcnmn.manager.dto.Command.DtoCommandRequest;
 import com.ahmtcnmn.manager.dto.Command.DtoCommandResponse;
 import com.ahmtcnmn.manager.dto.dtoAgent.DtoAgentResponse;
+import com.ahmtcnmn.manager.dto.dtoAgent.DtoHeartbeatRequest;
+import com.ahmtcnmn.manager.dto.dtoAgent.DtoHeartbeatResponse;
 import com.ahmtcnmn.manager.dto.dtoAgent.DtoRegisterRequest;
+import com.ahmtcnmn.manager.service.Rules.RuleService;
 import com.ahmtcnmn.manager.dto.dtoAgent.DtoRegisterResponse;
 import com.ahmtcnmn.manager.model.Agent;
 import com.ahmtcnmn.manager.repository.AgentRepository;
@@ -43,6 +46,7 @@ public class AgentController extends RestBaseController implements IAgentControl
     private final CommandService commandService;
     private final AgentService agentService;
     private final AgentRepository agentModelRepository;
+    private final RuleService ruleService;
 
 
     @GetMapping("/{id}")
@@ -58,15 +62,20 @@ public class AgentController extends RestBaseController implements IAgentControl
 
     @Override
     @PostMapping("/heartbeat")
-    public RootEntity<Void> heartBeat(HttpServletRequest request) {
+    public RootEntity<DtoHeartbeatResponse> heartBeat(@Valid @RequestBody(required = false) DtoHeartbeatRequest body,
+                                                     HttpServletRequest request) {
         Agent agent= (Agent) request.getAttribute("authenticatedAgent");
         if(agent==null){
             throw new CommandExecutionException(MessageType.COMMAND_EXECUTION_FAILED, "Agent not found");
         }
         agent.setLastSeen(Instant.now());
+        if (body != null) {
+            agent.setRulesVersion(body.rulesVersion());
+        }
         agentModelRepository.save(agent);
         ColorLogger.info("Received heartbeat from agent: " + agent.getHostname() + " at isOnline : " + agent.isOnline());
-        return ok();
+        // Agent kendi sürümüyle karşılaştırır; farklıysa GET /api/agent/rules ile yeni seti çeker
+        return ok(new DtoHeartbeatResponse(ruleService.currentVersion()));
     }
 
 

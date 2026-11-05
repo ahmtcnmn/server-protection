@@ -15,4 +15,6 @@ public interface AgentRepository extends JpaRepository<Agent, Long>, JpaSpecific
 
     boolean existsByHostname(@NotBlank String hostname);
     
+
+    long countByRulesVersion(String rulesVersion);
 }

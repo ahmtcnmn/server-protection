@@ -42,6 +42,8 @@ public final class RuleLoader {
     public static final String DETECTORS_DIR = "detectors/";
     public static final int DEFAULT_MAX_LENGTH = 4096;
 
+    // Agent'ın diske yazacağı yollar: klasör dışına çıkamaz (../, mutlak yol, alt klasör yok)
+    private static final Pattern SAFE_PATH = Pattern.compile("^(parsers|detectors)/[A-Za-z0-9][A-Za-z0-9._-]{0,100}\\.ya?ml$");
     private static final Pattern NAME = Pattern.compile("^[a-z0-9][a-z0-9-]{0,63}$");
     private static final Pattern EVENT_TYPE = Pattern.compile("^[A-Z][A-Z0-9_]{0,63}$");
     // Java named group kuralı: harfle başlar, yalnız harf ve rakam
@@ -55,6 +57,14 @@ public final class RuleLoader {
 
     /** rulesDir/parsers ve rulesDir/detectors altındaki .yaml/.yml dosyalarını yükler. */
     public static RuleSet fromDirectory(Path rulesDir) {
+        return fromFiles(readDirectory(rulesDir));
+    }
+
+    /**
+     * Kural dosyalarını okur (doğrulamadan): "parsers/x.yaml" → içerik. Manager bu haritayı Agent'lara olduğu gibi
+     * gönderir; Agent fromFiles ile aynı seti (aynı sürümle) kurar.
+     */
+    public static Map<String, String> readDirectory(Path rulesDir) {
         if (!Files.isDirectory(rulesDir)) {
             throw new RuleValidationException("Kural klasörü bulunamadı: " + rulesDir.toAbsolutePath());
         }
@@ -70,7 +80,12 @@ public final class RuleLoader {
                 throw new UncheckedIOException("Kural klasörü okunamadı: " + dir, e);
             }
         }
-        return fromFiles(files);
+        return files;
+    }
+
+    /** Kural dosyası yolu güvenli mi: yalnız parsers/ ya da detectors/ altında, düz bir .yaml/.yml dosya adı. */
+    public static boolean isRuleFilePath(String path) {
+        return SAFE_PATH.matcher(path).matches();
     }
 
     /**

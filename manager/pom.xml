@@ -30,6 +30,12 @@
 		<java.version>21</java.version>
 	</properties>
 	<dependencies>
+		<!-- Ortak kural motoru (repo kökündeki engine/). Önce: cd ../engine && ./mvnw install -->
+		<dependency>
+			<groupId>com.ahmtcnmn</groupId>
+			<artifactId>sentinel-engine</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 		<dependency>
     <groupId>io.jsonwebtoken</groupId>
     <artifactId>jjwt-api</artifactId>

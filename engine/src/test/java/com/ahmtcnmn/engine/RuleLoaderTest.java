@@ -126,4 +126,14 @@ class RuleLoaderTest {
     void missingDirectoryIsReported(@TempDir Path dir) {
         assertThrows(RuleValidationException.class, () -> RuleLoader.fromDirectory(dir.resolve("yok")));
     }
+
+    @Test
+    void ruleFilePathMustStayInsideRulesFolders() {
+        assertTrue(RuleLoader.isRuleFilePath("detectors/sqli-basic.yaml"));
+        assertTrue(RuleLoader.isRuleFilePath("parsers/raw-line.yml"));
+        for (String bad : new String[] {"../etc/cron.d/x.yaml", "detectors/../../x.yaml", "/etc/x.yaml",
+                "detectors/sub/x.yaml", "tests/x.yaml", "detectors/x.sh", "detectors/.hidden.yaml", "detectors\\x.yaml"}) {
+            org.junit.jupiter.api.Assertions.assertFalse(RuleLoader.isRuleFilePath(bad), bad);
+        }
+    }
 }

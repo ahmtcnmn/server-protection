@@ -24,7 +24,7 @@ Saldırgan ──► nginx ──► access.log ──► AGENT ── event ─
 **Tasarım notları**
 - **Polling:** Bağlantıyı her zaman Agent başlatır, Agent tarafında port açmak gerekmez.
 - **Kuyruk:** Manager'a ulaşılamazsa event'ler Agent'taki H2 kuyruğunda bekler, bağlantı gelince gönderilir. Geç gelen bu event'ler kaydedilir ama ban eşiğine sayılmaz.
-- **Kurallar YAML'da:** Yeni tespit kuralı için derleme gerekmez; Agent kural klasörünü dakikada bir kontrol eder, değişikliği yeniden başlatmadan uygular. Hatalı bir dosya gelirse eski set çalışmaya devam eder.
+- **Kurallar YAML'da ve Manager'dan dağıtılır:** Kurallar Manager'ın `rules/` klasöründedir. Manager seti doğrular; heartbeat yanıtında sürümünü döner. Sürümü farklı olan Agent yeni seti çeker (`GET /api/agent/rules`), doğrular ve kendi klasörüne yazar. Derleme ya da yeniden başlatma gerekmez; hatalı bir set hiçbir Agent'a gitmez, Agent'lar eski setle çalışmaya devam eder.
 - **Kararların sahibi Manager:** Agent uyguladığı kararları H2'de tutar. Yeniden başlayınca ufw'yi önce bu kayıtla, Manager'a ulaşınca da Manager'ın listesiyle eşitler. Yalnız `sentinel:` yorumlu kurallara dokunur; elle yazılmış ufw kuralları silinmez.
 - **Ban kapsamı:** Varsayılan `GLOBAL` (bir sunucuya saldıran IP tüm Agent'larda engellenir); elle ban tek bir Agent'a da verilebilir.
 - **Allowlist:** Panelden süreli ya da süresiz IP/CIDR eklenir. Eklenen adresi kapsayan aktif banlar hemen kaldırılır; config'teki `security.whitelisted-ips` her zaman geçerlidir ve silinemez.
@@ -78,6 +78,8 @@ patterns:
   - '(?i)union\s+(all\s+)?select'
 ```
 
+Kural değişikliği için Manager'ın `rules/` klasöründeki dosyayı düzenlemek yeterli: Manager dakikada bir (ya da `POST /api/rules/reload` ile hemen) yükler, Agent'lar sıradaki heartbeat'te (≤30 sn) alır. Durum: `GET /api/rules` (kaç Agent'ın güncel olduğu dahil).
+
 Yeni kural eklerken `rules/tests/detectors/<kural>.yaml` dosyası da eklenir; testler `cd engine && ./mvnw test` ile çalışır (test dosyası olmayan kural testi kırar).
 
 **Yeni Agent kaydı:** Panelde *Agents → Add agent*. Oluşan API key yalnız bir kez gösterilir; Agent'taki `manager.api-key` ayarına yazılır.
@@ -102,7 +104,8 @@ Agent bu satırı yakalar. Gerçek engelleme yalnızca ufw olan Linux sunucuda �
 | `manager.base-url` | Agent | `https://localhost:8443` | Manager adresi |
 | `agent.log-file-path` | Agent | `/tmp/test-access.log` | İzlenen web access log'u |
 | `spring.ssl.bundle.pem.manager.truststore.certificate` | Agent | `classpath:manager-cert.pem` | Güvenilen Manager sertifikası (Manager'ın keystore'u değişirse güncellenir) |
-| `agent.rules-dir` | Agent | `../rules` | Kural klasörü (sunucuda `/opt/sentinel/rules`) |
+| `security.rules-dir` | Manager | `../rules` | Dağıtılan kuralların klasörü |
+| `agent.rules-dir` | Agent | `../rules` | Manager'dan gelen kuralların yazıldığı klasör (sunucuda `/opt/sentinel/rules`); Manager'a ulaşılamazken buradan yüklenir |
 | `agent.log-parsers` | Agent | `nginx-access` | Access log'un parser'ları (DB ve sistem logu için `agent.db-log-parsers`, `agent.process-parsers`: `raw-line`) |
 | `agent.never-block` | Agent | `127.0.0.1,::1` | Manager istese bile Agent'ın asla engellemeyeceği IP'ler (son emniyet) |
 | `agent.log.debug` | Agent | `false` | `true` olunca her log satırı ve HTTP detayları da görünür |
@@ -111,7 +114,7 @@ Agent bu satırı yakalar. Gerçek engelleme yalnızca ufw olan Linux sunucuda �
 
 Agent'ın gerçekten engelleme yapabilmesi için ufw olan bir Linux sunucuda çalışması gerekir.
 
-1. Jar'ı üretin (`cd engine && ./mvnw install`, sonra `cd agent && ./mvnw package -DskipTests`) ve sunucuda `/opt/sentinel/agent.jar` olarak kopyalayın. `rules/` klasörünü de `/opt/sentinel/rules` olarak kopyalayın (kurallar jar'ın içinde değildir).
+1. Jar'ı üretin (`cd engine && ./mvnw install`, sonra `cd agent && ./mvnw package -DskipTests`) ve sunucuda `/opt/sentinel/agent.jar` olarak kopyalayın. Agent ayarlarına `agent.rules-dir=/opt/sentinel/rules` ekleyin; kurallar ilk heartbeat'te Manager'dan gelir ve bu klasöre yazılır.
 2. Aynı klasöre, jar'daki ayarları ezen bir `application.properties` koyun (`manager.base-url`, `agent.log-file-path` vb.).
 3. Agent'ı root olarak, bir `systemd` servisi şeklinde çalıştırın. Root değil ayrı bir kullanıcıyla çalışacaksa yalnız ufw ve ss için sudo izni verin: `<kullanıcı> ALL=(root) NOPASSWD: /usr/sbin/ufw, /usr/bin/ss`.
 4. Manager evdeki bilgisayarda (NAT arkasında) çalışıyorsa ters SSH tüneli açın: `ssh -N -R 8443:localhost:8443 <kullanıcı>@<sunucu>`.

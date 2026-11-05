@@ -6,14 +6,18 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import com.ahmtcnmn.agent.Dto.Heartbeat.DtoHeartbeatRequest;
+import com.ahmtcnmn.agent.Dto.Heartbeat.DtoHeartbeatResponse;
 import com.ahmtcnmn.agent.Dto.responder.DtoEventRequest;
 import com.ahmtcnmn.agent.Libs.ColorLogger;
 import com.ahmtcnmn.agent.service.MyRestClient;
 import com.ahmtcnmn.agent.service.QueueService;
+import com.ahmtcnmn.agent.service.RuleService;
 import com.ahmtcnmn.engine.Detection;
 import com.ahmtcnmn.engine.ParsedLine;
 
@@ -31,6 +35,8 @@ public class HeartbeatTask {
     private final RestClient restClient;
     private final QueueService queueService;
     private final ManagerConnection managerConnection;
+    private final RuleService ruleService;
+    private final RuleSync ruleSync;
 
     @Value("${manager.api-key}")
     private String apiKey;
@@ -45,14 +51,19 @@ public class HeartbeatTask {
     @Scheduled(fixedRate = 30000)          // her 30 saniyede bir
     public void sendHeartbeat() {
         try {
-            restClient.post()
+            DtoHeartbeatResponse response = restClient.post()
                 .uri(managerPostUrl)
                 .header("X-API-KEY", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new DtoHeartbeatRequest(ruleService.version()))
                 .retrieve()
-                .toBodilessEntity();
+                .body(DtoHeartbeatResponse.class);
             managerConnection.up();
             ColorLogger.info("HEARTBEAT", "Gönderildi (her 30 sn)");
             queueService.processPendingEvents();
+            if (response != null) {
+                ruleSync.sync(response.rulesVersion());
+            }
         } catch (Exception e) {
             // Manager erişilemez — logla, çökme (Faz 9'da offline kuyruk)
             if (managerConnection.isDown()) {

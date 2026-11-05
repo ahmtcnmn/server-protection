@@ -24,6 +24,8 @@ public enum MessageType {
     ALLOWLIST_ENTRY_NOT_FOUND("Allowlist entry not found", HttpStatus.NOT_FOUND),
     ALLOWLIST_ENTRY_EXISTS("Allowlist entry already exists", HttpStatus.CONFLICT),
     INVALID_ALLOWLIST_ENTRY("Invalid allowlist entry", HttpStatus.BAD_REQUEST),
+    INVALID_RULES("Invalid rules", HttpStatus.BAD_REQUEST),
+    RULES_NOT_LOADED("Rules not loaded", HttpStatus.NOT_FOUND),
     COMMAND_EXECUTION_FAILED("Command execution failed", HttpStatus.INTERNAL_SERVER_ERROR),
     INVALID_COMMAND_PARAMETERS("Invalid command parameters", HttpStatus.BAD_REQUEST),
 

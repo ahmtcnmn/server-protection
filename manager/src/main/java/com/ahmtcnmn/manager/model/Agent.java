@@ -44,6 +44,10 @@ public class Agent {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    // Agent'ın son heartbeat'te bildirdiği çalışan kural sürümü (Manager'ınkiyle aynıysa senkron)
+    @Column(name = "rules_version", length = 64)
+    private String rulesVersion;
+
     // is_online mantığı — Adım 2.6'da ekleyeceğiz
     @Transient   // Bu alan veritabanına KAYDEDİLMEZ, sadece hesaplanır
     public boolean isOnline() {

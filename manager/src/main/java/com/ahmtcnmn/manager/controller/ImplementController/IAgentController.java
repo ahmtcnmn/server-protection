@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 public interface IAgentController {
 
     public RootEntity<DtoRegisterResponse> registerAgent(DtoRegisterRequest request);
-    public RootEntity<Void> heartBeat(HttpServletRequest request);
+    public RootEntity<com.ahmtcnmn.manager.dto.dtoAgent.DtoHeartbeatResponse> heartBeat(
+            com.ahmtcnmn.manager.dto.dtoAgent.DtoHeartbeatRequest body, HttpServletRequest request);
 
 }
